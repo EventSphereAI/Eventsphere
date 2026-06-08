@@ -45,16 +45,64 @@ async def list_rooms(
 ):
     """List all rooms for an event"""
     tenant_id = request.state.tenant_id
-    
+
     async with TenantDB(tenant_id) as conn:
         rooms = await conn.fetch("""
-            SELECT id, room_number, hostel_name, capacity, is_available
-            FROM rooms
-            WHERE event_id = $1
-            ORDER BY hostel_name, room_number
+            SELECT
+                r.id,
+                r.room_number,
+                r.hostel_name,
+                r.capacity,
+                r.is_available,
+                COUNT(ra.id) AS occupied
+            FROM rooms r
+            LEFT JOIN room_allocations ra
+                ON ra.room_id = r.id
+            WHERE r.event_id = $1
+            GROUP BY
+                r.id,
+                r.room_number,
+                r.hostel_name,
+                r.capacity,
+                r.is_available
+            ORDER BY r.hostel_name, r.room_number
         """, event_id)
-    
-    return {"rooms": [dict(r) for r in rooms]}
+
+    return {
+        "rooms": [dict(r) for r in rooms]
+    }
+
+@router.get("/allocations/{event_id}")
+async def list_allocations(
+    event_id: str,
+    request: Request,
+    current_user: dict = Depends(require_any_staff)
+):
+    tenant_id = request.state.tenant_id
+
+    async with TenantDB(tenant_id) as conn:
+        allocations = await conn.fetch("""
+            SELECT
+                ra.id,
+                ra.room_id,
+                ra.delegate_id,
+                ra.checkin_time,
+                ra.checkout_time,
+                d.full_name,
+                r.room_number,
+                r.hostel_name
+            FROM room_allocations ra
+            JOIN delegates d
+                ON d.id = ra.delegate_id
+            JOIN rooms r
+                ON r.id = ra.room_id
+            WHERE ra.event_id = $1
+            ORDER BY r.hostel_name, r.room_number
+        """, event_id)
+
+    return {
+        "allocations": [dict(a) for a in allocations]
+    }
 
 @router.post("/allocate", status_code=201)
 async def allocate_delegate_to_room(
@@ -109,21 +157,38 @@ async def checkin_to_room(
             allocation_id
         )
     
-    return {"message": "Checked in"}
+        return {"message": "Checked in"}
+
 
 @router.post("/checkout/{allocation_id}")
 async def checkout_from_room(
-    allocation_id: str,
-    request: Request,
-    current_user: dict = Depends(require_any_staff)
-):
-    """Check out delegate from room"""
-    tenant_id = request.state.tenant_id
-    
-    async with TenantDB(tenant_id) as conn:
-        await conn.execute(
-            "UPDATE room_allocations SET checkout_time = NOW() WHERE id = $1",
-            allocation_id
-        )
-    
-    return {"message": "Checked out"}
+        allocation_id: str,
+        request: Request,
+        current_user: dict = Depends(require_any_staff)
+    ):
+        tenant_id = request.state.tenant_id
+
+        async with TenantDB(tenant_id) as conn:
+
+            allocation = await conn.fetchrow("""
+                SELECT checkin_time
+                FROM room_allocations
+                WHERE id = $1
+            """, allocation_id)
+
+            if not allocation:
+                raise HTTPException(404, "Allocation not found")
+
+            if not allocation["checkin_time"]:
+                raise HTTPException(
+                    400,
+                    "Delegate must check in before checkout"
+                )
+
+            await conn.execute("""
+                UPDATE room_allocations
+                SET checkout_time = NOW()
+                WHERE id = $1
+            """, allocation_id)
+
+        return {"message": "Checked out"}

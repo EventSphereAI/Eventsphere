@@ -7,6 +7,7 @@ import api from '@/utils/api';
 export default function ScannerPage() {
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState('');
+  const [scanType, setScanType] = useState('entry');
   const [result, setResult] = useState(null);
 
   useEffect(() => {
@@ -28,11 +29,11 @@ export default function ScannerPage() {
     scanner.render(
       async (decodedText) => {
         try {
-          const { data } = await api.post('/api/scan/', {
-            qr_token: decodedText,
-            event_id: selectedEvent,
-            scan_type: 'entry',
-          });
+            const { data } = await api.post('/api/scan/', {
+    qr_token: decodedText,
+    event_id: selectedEvent,
+    scan_type: scanType,
+  });
 
           setResult(data);
         } catch (err) {
@@ -72,7 +73,7 @@ export default function ScannerPage() {
     <div className="max-w-5xl mx-auto p-8">
 
       <h1 className="text-3xl font-bold mb-6">
-        QR Attendance Scanner
+        Universal QR Scanner
       </h1>
 
       <div className="bg-white p-6 rounded shadow mb-6">
@@ -92,6 +93,49 @@ export default function ScannerPage() {
             </option>
           ))}
         </select>
+
+      <div className="mt-4">
+
+    <label className="block mb-2 font-semibold">
+      Select Action
+    </label>
+
+    <select
+      value={scanType}
+      onChange={(e) => setScanType(e.target.value)}
+      className="w-full border p-3 rounded"
+    >
+      <option value="entry">
+        Attendance Entry
+      </option>
+
+      <option value="accommodation_checkin">
+        Accommodation Check-In
+      </option>
+
+      <option value="accommodation_checkout">
+        Accommodation Check-Out
+      </option>
+
+      <option value="food_breakfast">
+        Breakfast
+      </option>
+
+      <option value="food_lunch">
+        Lunch
+      </option>
+
+      <option value="food_dinner">
+        High Tea
+      </option>
+
+      <option value="kit_collection">
+        Kit Collection
+      </option>
+
+    </select>
+
+</div>
 
       </div>
 

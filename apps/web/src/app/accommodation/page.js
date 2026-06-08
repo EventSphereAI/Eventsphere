@@ -9,6 +9,14 @@ export default function AccommodationPage() {
 
   const [rooms, setRooms] = useState([]);
 
+  const [delegates, setDelegates] = useState([]);
+  const [allocations, setAllocations] = useState([]);
+
+  const [allocationForm, setAllocationForm] = useState({
+    delegate_id: '',
+    room_id: ''
+  });
+
   const [roomForm, setRoomForm] = useState({
     room_number: '',
     hostel_name: '',
@@ -22,8 +30,10 @@ export default function AccommodationPage() {
 
   useEffect(() => {
     if (selectedEvent) {
-      fetchRooms();
-    }
+  fetchRooms();
+  fetchDelegates();
+  fetchAllocations();
+}
   }, [selectedEvent]);
 
   const fetchEvents = async () => {
@@ -51,6 +61,30 @@ export default function AccommodationPage() {
     }
   };
 
+  const fetchDelegates = async () => {
+  try {
+    const { data } = await api.get(
+      `/api/delegates/?event_id=${selectedEvent}`
+    );
+
+    setDelegates(data.delegates || []);
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+const fetchAllocations = async () => {
+  try {
+    const { data } = await api.get(
+      `/api/accommodation/allocations/${selectedEvent}`
+    );
+
+    setAllocations(data.allocations || []);
+  } catch (err) {
+    console.error(err);
+  }
+};
+
   const createRoom = async (e) => {
     e.preventDefault();
 
@@ -75,6 +109,63 @@ export default function AccommodationPage() {
       alert('Failed to create room');
     }
   };
+
+  const allocateDelegate = async (e) => {
+  e.preventDefault();
+
+  try {
+    await api.post('/api/accommodation/allocate', {
+      delegate_id: allocationForm.delegate_id,
+      room_id: allocationForm.room_id,
+      event_id: selectedEvent
+    });
+
+    alert('Delegate allocated successfully');
+
+    setAllocationForm({
+      delegate_id: '',
+      room_id: ''
+    });
+
+    fetchAllocations();
+
+  } catch (err) {
+    console.error(err);
+
+    alert(
+      err?.response?.data?.detail ||
+      'Failed to allocate delegate'
+    );
+  }
+};
+
+const checkInAllocation = async (allocationId) => {
+  try {
+    await api.post(
+      `/api/accommodation/checkin/${allocationId}`
+    );
+
+    fetchAllocations();
+
+  } catch (err) {
+    console.error(err);
+    alert('Check-in failed');
+  }
+};
+
+const checkOutAllocation = async (allocationId) => {
+  try {
+    await api.post(
+      `/api/accommodation/checkout/${allocationId}`
+    );
+
+    fetchAllocations();
+
+  } catch (err) {
+    console.error(err);
+    alert('Check-out failed');
+  }
+};
 
   return (
     <div className="max-w-6xl mx-auto p-8">
@@ -168,6 +259,74 @@ export default function AccommodationPage() {
 
       </form>
 
+      <form
+  onSubmit={allocateDelegate}
+  className="bg-white p-6 rounded shadow mb-8 space-y-4"
+>
+
+  <h2 className="text-xl font-bold">
+    Allocate Delegate
+  </h2>
+
+  <select
+    value={allocationForm.delegate_id}
+    onChange={(e) =>
+      setAllocationForm({
+        ...allocationForm,
+        delegate_id: e.target.value
+      })
+    }
+    className="w-full border p-3 rounded"
+    required
+  >
+    <option value="">
+      Select Delegate
+    </option>
+
+    {delegates.map((delegate) => (
+      <option
+        key={delegate.id}
+        value={delegate.id}
+      >
+        {delegate.full_name}
+      </option>
+    ))}
+  </select>
+
+  <select
+    value={allocationForm.room_id}
+    onChange={(e) =>
+      setAllocationForm({
+        ...allocationForm,
+        room_id: e.target.value
+      })
+    }
+    className="w-full border p-3 rounded"
+    required
+  >
+    <option value="">
+      Select Room
+    </option>
+
+    {rooms.map((room) => (
+      <option
+        key={room.id}
+        value={room.id}
+      >
+        {room.hostel_name} - Room {room.room_number}
+      </option>
+    ))}
+  </select>
+
+  <button
+    type="submit"
+    className="bg-green-600 text-white px-6 py-3 rounded"
+  >
+    Allocate Delegate
+  </button>
+
+</form>
+
       <div className="bg-white p-6 rounded shadow">
 
         <h2 className="text-xl font-bold mb-4">
@@ -175,35 +334,139 @@ export default function AccommodationPage() {
         </h2>
 
         {rooms.length === 0 ? (
-          <p>No rooms created yet.</p>
-        ) : (
-          <div className="space-y-3">
+  <p>No rooms created yet.</p>
+) : (
+  <div className="overflow-x-auto">
+    <table className="min-w-full border border-gray-300">
+      <thead className="bg-gray-100">
+        <tr>
+          <th className="border px-4 py-2 text-left">Hostel</th>
+          <th className="border px-4 py-2 text-left">Room Number</th>
+          <th className="border px-4 py-2 text-left">Capacity</th>
+          <th className="border px-4 py-2 text-left">Occupied</th>
+          <th className="border px-4 py-2 text-left">Status</th>
+        </tr>
+      </thead>
 
-            {rooms.map((room) => (
-              <div
-                key={room.id}
-                className="border p-4 rounded"
-              >
-                <p>
-                  <strong>{room.hostel_name}</strong>
-                </p>
+      <tbody>
+        {rooms.map((room) => (
+          <tr key={room.id}>
+            <td className="border px-4 py-2">
+              {room.hostel_name}
+            </td>
 
-                <p>
-                  Room: {room.room_number}
-                </p>
+            <td className="border px-4 py-2">
+              {room.room_number}
+            </td>
 
-                <p>
-                  Capacity: {room.capacity}
-                </p>
+            <td className="border px-4 py-2">
+              {room.capacity}
+            </td>
 
-                <p>
-                  Available: {room.is_available ? 'Yes' : 'No'}
-                </p>
-              </div>
-            ))}
+            <td className="border px-4 py-2">
+            {room.occupied}/{room.capacity}
+          </td>
 
-          </div>
-        )}
+          <td className="border px-4 py-2">
+            {Number(room.occupied) >= Number(room.capacity)
+              ? 'Full'
+              : 'Available'}
+          </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+)}
+      <div className="bg-white p-6 rounded shadow mt-8">
+
+  <h2 className="text-xl font-bold mb-4">
+    Current Allocations
+  </h2>
+
+  {allocations.length === 0 ? (
+  <p>No allocations yet.</p>
+) : (
+  <div className="overflow-x-auto">
+    <table className="min-w-full border border-gray-300">
+      <thead className="bg-gray-100">
+        <tr>
+          <th className="border px-4 py-2 text-left">Delegate</th>
+          <th className="border px-4 py-2 text-left">Hostel</th>
+          <th className="border px-4 py-2 text-left">Room</th>
+          <th className="border px-4 py-2 text-left">Check-In</th>
+          <th className="border px-4 py-2 text-left">Check-Out</th>
+          <th className="border px-4 py-2 text-left">Actions</th>
+        </tr>
+      </thead>
+
+        <tbody>
+    {allocations.map((allocation) => (
+      <tr key={allocation.id}>
+        <td className="border px-4 py-2">
+          {allocation.full_name}
+        </td>
+
+        <td className="border px-4 py-2">
+          {allocation.hostel_name}
+        </td>
+
+        <td className="border px-4 py-2">
+          {allocation.room_number}
+        </td>
+
+      <td className="border px-4 py-2">
+  {allocation.checkin_time
+    ? new Date(allocation.checkin_time).toLocaleString()
+    : 'Pending'}
+</td>
+
+<td className="border px-4 py-2">
+  {allocation.checkout_time
+    ? new Date(allocation.checkout_time).toLocaleString()
+    : 'Pending'}
+</td>
+
+<td className="border px-4 py-2">
+  <div className="flex gap-2">
+
+    {!allocation.checkin_time ? (
+      <button
+        onClick={() => checkInAllocation(allocation.id)}
+        className="bg-green-600 text-white px-3 py-1 rounded"
+      >
+        Check In
+      </button>
+    ) : (
+      <span className="text-green-600 font-medium">
+        Checked In
+      </span>
+    )}
+
+    {allocation.checkin_time &&
+ !allocation.checkout_time ? (
+      <button
+        onClick={() => checkOutAllocation(allocation.id)}
+        className="bg-red-600 text-white px-3 py-1 rounded"
+      >
+        Check Out
+      </button>
+    ) : (
+      <span className="text-red-600 font-medium">
+        Checked Out
+      </span>
+    )}
+
+  </div>
+</td>
+      </tr>
+    ))}
+  </tbody>
+    </table>
+  </div>
+)}
+
+</div>
 
       </div>
 

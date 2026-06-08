@@ -6,7 +6,9 @@ import uuid
 import qrcode
 import io
 from base64 import b64encode
+import re
 from app.routes.scanning import generate_qr_token
+from pydantic import BaseModel, EmailStr, field_validator
 
 router = APIRouter()
 
@@ -15,13 +17,35 @@ class DelegateCreate(BaseModel):
     email: EmailStr
     phone: str | None = None
     college: str | None = None
+
     food_pref: str = "veg"
+
     accommodation_required: bool = False
+
+    emergency_contact_name: str | None = None
+    emergency_contact_phone: str | None = None
+
     event_id: str
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value):
+        if value and not re.match(r"^[6-9]\d{9}$", value):
+            raise ValueError("Invalid Indian mobile number")
+        return value
+
+    @field_validator("emergency_contact_phone")
+    @classmethod
+    def validate_emergency_phone(cls, value):
+        if value and not re.match(r"^[6-9]\d{9}$", value):
+            raise ValueError("Invalid emergency mobile number")
+        return value
 
 class DelegateUpdate(BaseModel):
     payment_status: str | None = None
     food_pref: str | None = None
+    emergency_contact_name: str | None = None
+    emergency_contact_phone: str | None = None
 
 @router.post("/", status_code=201)
 async def create_delegate(
@@ -44,10 +68,10 @@ async def create_delegate(
     async with TenantDB(tenant_id) as conn:
         try:
             await conn.execute("""
-                INSERT INTO delegates (id, tenant_id, event_id, full_name, email, phone, college, qr_code, food_pref, accommodation_required)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                INSERT INTO delegates (id, tenant_id, event_id, full_name, email, phone, college, qr_code, food_pref, accommodation_required, emergency_contact_name, emergency_contact_phone)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             """, delegate_id, tenant_id, body.event_id, body.full_name, body.email,
-                body.phone, body.college, qr_token, body.food_pref, body.accommodation_required)
+                body.phone, body.college, qr_token, body.food_pref, body.accommodation_required, body.emergency_contact_name, body.emergency_contact_phone)
         except Exception as e:
             raise HTTPException(400, f"Failed to create delegate: {str(e)}")
     
@@ -68,7 +92,17 @@ async def list_delegates(
     
     async with TenantDB(tenant_id) as conn:
         delegates = await conn.fetch("""
-            SELECT id, full_name, email, college, payment_status, food_pref, created_at
+        SELECT id,
+            full_name,
+            email,
+            phone,
+            college,
+            payment_status,
+            food_pref,
+            accommodation_required,
+            emergency_contact_name,
+            emergency_contact_phone,
+            created_at
             FROM delegates
             WHERE event_id = $1
             ORDER BY created_at DESC
@@ -116,6 +150,14 @@ async def update_delegate(
     if body.food_pref:
         updates.append("food_pref = $" + str(len(values) + 1))
         values.append(body.food_pref)
+    
+    if body.emergency_contact_name:
+        updates.append("emergency_contact_name = $" + str(len(values) + 1))
+        values.append(body.emergency_contact_name)
+    
+    if body.emergency_contact_phone:
+        updates.append("emergency_contact_phone = $" + str(len(values) + 1))
+        values.append(body.emergency_contact_phone)
     
     if not updates:
         return {"message": "No updates provided"}

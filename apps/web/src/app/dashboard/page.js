@@ -153,7 +153,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Quick Links */}
-        <section className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <section className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-6">
 
           <button
             onClick={() => router.push('/events')}
@@ -179,17 +179,29 @@ export default function DashboardPage() {
             <p className="font-semibold">Accommodation</p>
           </button>
 
-          <button
-            onClick={() => router.push('/reports')}
-            className="card text-center hover:shadow-lg transition"
-          >
-            <p className="text-2xl mb-2">🔍</p>
-            <p className="font-semibold">Reports</p>
-              <button
-    onClick={() => router.push('/reports')}
-    className="card text-center hover:shadow-lg transition"
-  ></button>
-          </button>
+                <button
+        onClick={() => router.push('/reports')}
+        className="card text-center hover:shadow-lg transition"
+      >
+        <p className="text-2xl mb-2">🔍</p>
+        <p className="font-semibold">Reports</p>
+      </button>
+
+      <button
+  onClick={() => router.push('/attendance')}
+  className="card text-center hover:shadow-lg transition"
+>
+  <p className="text-2xl mb-2">📊</p>
+  <p className="font-semibold">Attendance</p>
+</button>
+
+<button
+  onClick={() => router.push('/scanner')}
+  className="card text-center hover:shadow-lg transition"
+>
+  <p className="text-2xl mb-2">📷</p>
+  <p className="font-semibold">Scanner</p>
+</button>s
 
         </section>
 

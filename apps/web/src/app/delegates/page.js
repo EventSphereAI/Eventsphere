@@ -24,6 +24,8 @@ export default function DelegatesPage() {
     phone: '',
     college: '',
     food_pref: 'veg',
+    emergency_contact_name: '',
+    emergency_contact_phone: '',
     accommodation_required: false
   });
 
@@ -70,14 +72,16 @@ export default function DelegatesPage() {
 
       fetchDelegates();
 
-      setForm({
-        full_name: '',
-        email: '',
-        phone: '',
-        college: '',
-        food_pref: 'veg',
-        accommodation_required: false
-      });
+  setForm({
+      full_name: '',
+      email: '',
+      phone: '',
+      college: '',
+      food_pref: 'veg',
+      emergency_contact_name: '',
+      emergency_contact_phone: '',
+      accommodation_required: false
+    });
 
     } catch (err) {
       console.error(err);
@@ -163,15 +167,19 @@ const viewQr = async (delegateId) => {
           required
         />
 
-        <input
-          type="text"
-          placeholder="Phone"
-          value={form.phone}
-          onChange={(e) =>
-            setForm({ ...form, phone: e.target.value })
-          }
-          className="w-full border p-3 rounded"
-        />
+      <input
+      type="tel"
+      placeholder="Phone"
+      value={form.phone}
+      maxLength={10}
+      onChange={(e) =>
+        setForm({
+          ...form,
+          phone: e.target.value.replace(/\D/g, '').slice(0, 10)
+        })
+      }
+      className="w-full border p-3 rounded"
+    />
 
         <input
           type="text"
@@ -182,6 +190,34 @@ const viewQr = async (delegateId) => {
           }
           className="w-full border p-3 rounded"
         />
+
+        <input
+        type="text"
+        placeholder="Emergency Contact Name"
+        value={form.emergency_contact_name}
+        onChange={(e) =>
+          setForm({
+            ...form,
+            emergency_contact_name: e.target.value
+          })
+        }
+        className="w-full border p-3 rounded"
+      />
+
+        <input
+    type="tel"
+    placeholder="Emergency Contact Phone"
+    value={form.emergency_contact_phone}
+    onChange={(e) =>
+      setForm({
+        ...form,
+        emergency_contact_phone: e.target.value
+          .replace(/\D/g, '')
+          .slice(0, 10)
+      })
+    }
+    className="w-full border p-3 rounded"
+  />
 
         <select
           value={form.food_pref}
@@ -250,6 +286,8 @@ const viewQr = async (delegateId) => {
               {delegate.college}
             </p>
           </div>
+
+          
 
 
         {qrData && (

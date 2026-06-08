@@ -90,86 +90,19 @@ async def scan_qr(
             current_user["user_id"], body.session_id, body.location, body.device_id)
 
         # 6. Side effects per scan type
-
-    if body.scan_type == "entry":
-        await conn.execute(
-            "UPDATE delegates SET checked_in=true, checked_in_at=NOW() WHERE id=$1",
-            delegate_id
-        )
-
-    elif body.scan_type == "accommodation_checkin":
-
-        allocation = await conn.fetchrow("""
-            SELECT id
-            FROM room_allocations
-            WHERE delegate_id = $1
-            AND event_id = $2
-        """, delegate_id, body.event_id)
-
-        if not allocation:
-            return _scan_result(
-                False,
-                "NO_ROOM",
-                "Delegate has no room allocation",
-                dict(delegate)
+        if body.scan_type == "entry":
+            await conn.execute(
+                "UPDATE delegates SET checked_in=true, checked_in_at=NOW() WHERE id=$1",
+                delegate_id
             )
-
-        await conn.execute("""
-            UPDATE room_allocations
-            SET checkin_time = NOW()
-            WHERE id = $1
-        """, allocation["id"])
-
-    elif body.scan_type == "accommodation_checkout":
-
-        allocation = await conn.fetchrow("""
-            SELECT id, checkin_time
-            FROM room_allocations
-            WHERE delegate_id = $1
-            AND event_id = $2
-        """, delegate_id, body.event_id)
-
-        if not allocation:
-            return _scan_result(
-                False,
-                "NO_ROOM",
-                "Delegate has no room allocation",
-                dict(delegate)
-            )
-
-        if not allocation["checkin_time"]:
-            return _scan_result(
-                False,
-                "NOT_CHECKED_IN",
-                "Delegate has not checked in",
-                dict(delegate)
-            )
-
-        await conn.execute("""
-            UPDATE room_allocations
-            SET checkout_time = NOW()
-            WHERE id = $1
-        """, allocation["id"])
-
-    elif body.scan_type in (
-        "food_breakfast",
-        "food_lunch",
-        "food_dinner"
-    ):
-        meal = body.scan_type.replace("food_", "")
-
-        await conn.execute("""
-            INSERT INTO food_logs
-            (id, tenant_id, delegate_id, event_id, meal_type, staff_id)
-            VALUES ($1,$2,$3,$4,$5,$6)
-        """,
-            str(uuid.uuid4()),
-            tenant_id,
-            delegate_id,
-            body.event_id,
-            meal,
-            current_user["user_id"]
-        )
+        elif body.scan_type in ("food_breakfast", "food_lunch", "food_dinner"):
+            meal = body.scan_type.replace("food_", "")
+            await conn.execute("""
+                INSERT INTO food_logs
+                  (id, tenant_id, delegate_id, event_id, meal_type, staff_id)
+                VALUES ($1,$2,$3,$4,$5,$6)
+            """, str(uuid.uuid4()), tenant_id, delegate_id, body.event_id, meal,
+                current_user["user_id"])
 
     return _scan_result(True, "OK",
                         f"Welcome, {delegate['full_name']}!", dict(delegate))
