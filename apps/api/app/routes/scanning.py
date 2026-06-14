@@ -62,10 +62,23 @@ async def scan_qr(
     async with TenantDB(tenant_id) as conn:
         # 2. Fetch delegate
         delegate = await conn.fetchrow(
-            "SELECT id, full_name, college, payment_status, food_pref "
-            "FROM delegates WHERE id = $1 AND event_id = $2",
-            delegate_id, body.event_id
-        )
+        """
+        SELECT
+            id,
+            full_name,
+            college,
+            payment_status,
+            food_pref,
+            accommodation_required,
+            emergency_contact_name,
+            emergency_contact_phone
+        FROM delegates
+        WHERE id = $1
+        AND event_id = $2
+        """,
+        delegate_id,
+        body.event_id
+    )
         if not delegate:
             return _scan_result(False, "NOT_FOUND", "Delegate not found for this event", None)
 
@@ -89,90 +102,140 @@ async def scan_qr(
         """, log_id, tenant_id, delegate_id, body.event_id, body.scan_type,
             current_user["user_id"], body.session_id, body.location, body.device_id)
 
-        # 6. Side effects per scan type
+              # 6. Side effects per scan type
 
-    if body.scan_type == "entry":
-        await conn.execute(
-            "UPDATE delegates SET checked_in=true, checked_in_at=NOW() WHERE id=$1",
-            delegate_id
-        )
+        if body.scan_type == "entry":
 
-    elif body.scan_type == "accommodation_checkin":
-
-        allocation = await conn.fetchrow("""
-            SELECT id
-            FROM room_allocations
-            WHERE delegate_id = $1
-            AND event_id = $2
-        """, delegate_id, body.event_id)
-
-        if not allocation:
-            return _scan_result(
-                False,
-                "NO_ROOM",
-                "Delegate has no room allocation",
-                dict(delegate)
+            await conn.execute(
+                """
+                UPDATE delegates
+                SET checked_in = true,
+                    checked_in_at = NOW()
+                WHERE id = $1
+                """,
+                delegate_id
             )
 
-        await conn.execute("""
-            UPDATE room_allocations
-            SET checkin_time = NOW()
-            WHERE id = $1
-        """, allocation["id"])
+        elif body.scan_type == "exit":
 
-    elif body.scan_type == "accommodation_checkout":
-
-        allocation = await conn.fetchrow("""
-            SELECT id, checkin_time
-            FROM room_allocations
-            WHERE delegate_id = $1
-            AND event_id = $2
-        """, delegate_id, body.event_id)
-
-        if not allocation:
-            return _scan_result(
-                False,
-                "NO_ROOM",
-                "Delegate has no room allocation",
-                dict(delegate)
+            await conn.execute(
+                """
+                UPDATE delegates
+                SET checked_in = false
+                WHERE id = $1
+                """,
+                delegate_id
             )
 
-        if not allocation["checkin_time"]:
-            return _scan_result(
-                False,
-                "NOT_CHECKED_IN",
-                "Delegate has not checked in",
-                dict(delegate)
+        elif body.scan_type == "accommodation_checkin":
+
+            allocation = await conn.fetchrow(
+                """
+                SELECT id
+                FROM room_allocations
+                WHERE delegate_id = $1
+                AND event_id = $2
+                """,
+                delegate_id,
+                body.event_id
             )
 
-        await conn.execute("""
-            UPDATE room_allocations
-            SET checkout_time = NOW()
-            WHERE id = $1
-        """, allocation["id"])
+            if not allocation:
+                return _scan_result(
+                    False,
+                    "NO_ROOM",
+                    "Delegate has no room allocation",
+                    dict(delegate)
+                )
 
-    elif body.scan_type in (
-        "food_breakfast",
-        "food_lunch",
-        "food_dinner"
-    ):
-        meal = body.scan_type.replace("food_", "")
+            await conn.execute(
+                """
+                UPDATE room_allocations
+                SET checkin_time = NOW()
+                WHERE id = $1
+                """,
+                allocation["id"]
+            )
 
-        await conn.execute("""
-            INSERT INTO food_logs
-            (id, tenant_id, delegate_id, event_id, meal_type, staff_id)
-            VALUES ($1,$2,$3,$4,$5,$6)
-        """,
-            str(uuid.uuid4()),
-            tenant_id,
-            delegate_id,
-            body.event_id,
-            meal,
-            current_user["user_id"]
-        )
+        elif body.scan_type == "accommodation_checkout":
 
-    return _scan_result(True, "OK",
-                        f"Welcome, {delegate['full_name']}!", dict(delegate))
+            allocation = await conn.fetchrow(
+                """
+                SELECT id, checkin_time
+                FROM room_allocations
+                WHERE delegate_id = $1
+                AND event_id = $2
+                """,
+                delegate_id,
+                body.event_id
+            )
+
+            if not allocation:
+                return _scan_result(
+                    False,
+                    "NO_ROOM",
+                    "Delegate has no room allocation",
+                    dict(delegate)
+                )
+
+            if not allocation["checkin_time"]:
+                return _scan_result(
+                    False,
+                    "NOT_CHECKED_IN",
+                    "Delegate has not checked in",
+                    dict(delegate)
+                )
+
+            await conn.execute(
+                """
+                UPDATE room_allocations
+                SET checkout_time = NOW()
+                WHERE id = $1
+                """,
+                allocation["id"]
+            )
+
+        elif body.scan_type in (
+            "food_breakfast",
+            "food_lunch",
+            "food_dinner"
+        ):
+
+            meal = body.scan_type.replace(
+                "food_",
+                ""
+            )
+
+            await conn.execute(
+                """
+                INSERT INTO food_logs
+                (
+                    id,
+                    tenant_id,
+                    delegate_id,
+                    event_id,
+                    meal_type,
+                    staff_id
+                )
+                VALUES
+                (
+                    $1,$2,$3,$4,$5,$6
+                )
+                """,
+                str(uuid.uuid4()),
+                tenant_id,
+                delegate_id,
+                body.event_id,
+                meal,
+                current_user["user_id"]
+            )
+
+    return _scan_result(
+        True,
+        "OK",
+        f"Welcome, {delegate['full_name']}!",
+        dict(delegate)
+    )
 
 
 async def _check_duplicate(conn, tenant_id, delegate_id, body: ScanRequest) -> str | None:
@@ -180,15 +243,37 @@ async def _check_duplicate(conn, tenant_id, delegate_id, body: ScanRequest) -> s
     scan_type = body.scan_type
 
     # Entry: allow if not already checked in, or if exit happened after last entry
+    if scan_type in ("entry", "exit"):
+
+     last = await conn.fetchrow(
+        """
+        SELECT scan_type
+        FROM scan_logs
+        WHERE tenant_id = $1
+        AND delegate_id = $2
+        AND event_id = $3
+        AND scan_type IN ('entry','exit')
+        AND scan_date = CURRENT_DATE
+        ORDER BY scanned_at DESC
+        LIMIT 1
+        """,
+        tenant_id,
+        delegate_id,
+        body.event_id
+    )
+
     if scan_type == "entry":
-        last = await conn.fetchrow("""
-            SELECT scan_type FROM scan_logs
-            WHERE tenant_id=$1 AND delegate_id=$2 AND event_id=$3
-              AND scan_type IN ('entry','exit') AND scan_date=CURRENT_DATE
-            ORDER BY scanned_at DESC LIMIT 1
-        """, tenant_id, delegate_id, body.event_id)
+
         if last and last["scan_type"] == "entry":
-            return "Delegate already checked in. Please scan exit first."
+            return "Delegate already checked in."
+
+    elif scan_type == "exit":
+
+        if not last:
+            return "Delegate is not checked in."
+
+        if last["scan_type"] == "exit":
+            return "Delegate already checked out."
 
     # Food: one meal per type per day
     elif scan_type in ("food_breakfast", "food_lunch", "food_dinner"):

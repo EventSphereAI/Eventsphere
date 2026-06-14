@@ -54,7 +54,7 @@ export default function ScannerPage() {
     return () => {
       scanner.clear().catch(() => {});
     };
-  }, [selectedEvent]);
+  }, [selectedEvent, scanType]);
 
   const fetchEvents = async () => {
     try {
@@ -109,6 +109,10 @@ export default function ScannerPage() {
         Attendance Entry
       </option>
 
+      <option value="exit">
+      Attendance Exit
+      </option>
+
       <option value="accommodation_checkin">
         Accommodation Check-In
       </option>
@@ -138,6 +142,15 @@ export default function ScannerPage() {
 </div>
 
       </div>
+      <div className="mb-4 p-3 bg-blue-100 rounded">
+
+  <strong>Current Mode:</strong>
+
+  {' '}
+
+  {scanType}
+
+</div>
 
       <div
         id="reader"

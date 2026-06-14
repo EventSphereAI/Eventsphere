@@ -467,8 +467,7 @@ const checkOutAllocation = async (allocationId) => {
 )}
 
 </div>
-
-      </div>
+</div>
 
     </div>
   );

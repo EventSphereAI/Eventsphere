@@ -84,9 +84,16 @@ export default function DelegatesPage() {
     });
 
     } catch (err) {
-      console.error(err);
-      alert('Failed to register delegate');
-    }
+  console.error(err);
+
+  alert(
+    JSON.stringify(
+      err.response?.data,
+      null,
+      2
+    )
+  );
+}
   };
 
   const fetchDelegates = async () => {
@@ -220,15 +227,16 @@ const viewQr = async (delegateId) => {
   />
 
         <select
-          value={form.food_pref}
-          onChange={(e) =>
-            setForm({ ...form, food_pref: e.target.value })
-          }
-          className="w-full border p-3 rounded"
-        >
-          <option value="veg">Veg</option>
-          <option value="non-veg">Non Veg</option>
-        </select>
+        value={form.food_pref}
+        onChange={(e) =>
+          setForm({ ...form, food_pref: e.target.value })
+        }
+        className="w-full border p-3 rounded"
+      >
+        <option value="veg">Veg</option>
+        <option value="non_veg">Non Veg</option>
+        <option value="vegan">Vegan</option>
+      </select>
 
         <label className="flex items-center gap-2">
           <input
