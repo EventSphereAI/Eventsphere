@@ -9,6 +9,7 @@ from base64 import b64encode
 import re
 from app.routes.scanning import generate_qr_token
 from pydantic import BaseModel, EmailStr, field_validator
+from app.services.email_service import send_registration_email
 
 router = APIRouter()
 
@@ -56,25 +57,82 @@ async def create_delegate(
     """Register a new delegate"""
     tenant_id = request.state.tenant_id
     delegate_id = str(uuid.uuid4())
-    
-    # Generate unique QR token
+
     # Generate signed QR token
     qr_token = generate_qr_token(
         tenant_id,
         body.event_id,
         delegate_id
     )
-    
+
     async with TenantDB(tenant_id) as conn:
         try:
             await conn.execute("""
-                INSERT INTO delegates (id, tenant_id, event_id, full_name, email, phone, college, qr_code, food_pref, accommodation_required, emergency_contact_name, emergency_contact_phone)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-            """, delegate_id, tenant_id, body.event_id, body.full_name, body.email,
-                body.phone, body.college, qr_token, body.food_pref, body.accommodation_required, body.emergency_contact_name, body.emergency_contact_phone)
+                INSERT INTO delegates (
+                    id,
+                    tenant_id,
+                    event_id,
+                    full_name,
+                    email,
+                    phone,
+                    college,
+                    qr_code,
+                    food_pref,
+                    accommodation_required,
+                    emergency_contact_name,
+                    emergency_contact_phone
+                )
+                VALUES (
+                    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12
+                )
+            """,
+                delegate_id,
+                tenant_id,
+                body.event_id,
+                body.full_name,
+                body.email,
+                body.phone,
+                body.college,
+                qr_token,
+                body.food_pref,
+                body.accommodation_required,
+                body.emergency_contact_name,
+                body.emergency_contact_phone
+            )
+
+            # Fetch event title for email
+            event = await conn.fetchrow(
+                """
+                SELECT title
+                FROM events
+                WHERE id = $1
+                """,
+                body.event_id
+            )
+
+            event_title = (
+                event["title"]
+                if event
+                else "EventSphere Event"
+            )
+
         except Exception as e:
-            raise HTTPException(400, f"Failed to create delegate: {str(e)}")
-    
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to create delegate: {str(e)}"
+            )
+
+    # Send email AFTER DB transaction succeeds
+    try:
+        await send_registration_email(
+            email=body.email,
+            name=body.full_name,
+            event_name=event_title,
+            qr_token=qr_token
+        )
+    except Exception as e:
+        print(f"Email sending failed: {e}")
+
     return {
         "message": "Delegate registered",
         "delegate_id": delegate_id,
@@ -203,4 +261,4 @@ async def get_qr_pass(
     return {
         "name": delegate["full_name"],
         "qr_code": b64encode(img_bytes.getvalue()).decode()
-    }
+ }

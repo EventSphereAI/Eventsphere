@@ -6,6 +6,7 @@ import os
 
 PLATFORM_DOMAIN = os.getenv("PLATFORM_DOMAIN", "eventsphere.app")
 
+
 class TenantMiddleware(BaseHTTPMiddleware):
     """
     Resolves tenant from subdomain or header.
@@ -20,13 +21,14 @@ class TenantMiddleware(BaseHTTPMiddleware):
 
         # Public endpoints — no tenant needed
         if (
-request.url.path.startswith("/docs")
-or request.url.path.startswith("/openapi.json")
-or request.url.path.startswith("/redoc")
-or request.url.path == "/api/health"
-or request.url.path == "/api/auth/register-tenant"
-or request.url.path == "/api/public/register"
-):  
+            request.url.path.startswith("/docs")
+            or request.url.path.startswith("/openapi.json")
+            or request.url.path.startswith("/redoc")
+            or request.url.path == "/api/health"
+            or request.url.path == "/api/auth/register-tenant"
+            or request.url.path.startswith("/api/test")
+            or request.url.path.startswith("/api/public")
+        ):
             request.state.tenant_id = None
             request.state.tenant = None
             return await call_next(request)
@@ -34,12 +36,19 @@ or request.url.path == "/api/public/register"
         tenant_slug = self._extract_slug(request)
 
         if not tenant_slug:
-            return JSONResponse({"error": "Tenant not found"}, status_code=404)
+            return JSONResponse(
+                {"error": "Tenant not found"},
+                status_code=404
+            )
 
         pool = get_pool()
 
         tenant = await pool.fetchrow(
-            "SELECT id, slug, name, plan, is_active FROM tenants WHERE slug = $1",
+            """
+            SELECT id, slug, name, plan, is_active
+            FROM tenants
+            WHERE slug = $1
+            """,
             tenant_slug
         )
 

@@ -72,6 +72,7 @@ export function AuthProvider({ children }) {
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('refresh_token', data.refresh_token);
       setUser(data.user || { email, role: data.role });
+      setTenant(data.tenant);
       setError(null);
 
       // Route based on role
