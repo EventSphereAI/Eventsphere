@@ -105,6 +105,14 @@ async def login(body: LoginRequest, request: Request):
             "SELECT id, email, password_hash, full_name, role, is_active FROM users WHERE email = $1",
             body.email
         )
+        tenant = await conn.fetchrow(
+        """
+        SELECT id, name, slug
+        FROM tenants
+        WHERE id = $1
+        """,
+        tenant_id
+    )
 
     if not user or not verify_password(body.password, user["password_hash"]):
         raise HTTPException(401, detail="Invalid email or password")
@@ -127,16 +135,21 @@ async def login(body: LoginRequest, request: Request):
     }
 
     return {
-        "user": {
-            "id": str(user["id"]),
-            "name": user["full_name"],
-            "email": user["email"],
-            "role": user["role"],
-        },
-        "access_token": create_access_token(token_data),
-        "refresh_token": create_refresh_token(token_data),
-        "token_type": "bearer"
-    }
+    "user": {
+        "id": str(user["id"]),
+        "name": user["full_name"],
+        "email": user["email"],
+        "role": user["role"],
+    },
+    "tenant": {
+        "id": str(tenant["id"]),
+        "name": tenant["name"],
+        "slug": tenant["slug"]
+    },
+    "access_token": create_access_token(token_data),
+    "refresh_token": create_refresh_token(token_data),
+    "token_type": "bearer"
+}
 
 
 @router.post("/refresh")

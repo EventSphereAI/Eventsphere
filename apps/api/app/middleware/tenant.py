@@ -25,6 +25,8 @@ class TenantMiddleware(BaseHTTPMiddleware):
             or request.url.path.startswith("/redoc")
             or request.url.path == "/api/health"
             or request.url.path == "/api/auth/register-tenant"
+            or request.url.path.startswith("/api/test")
+            or request.url.path.startswith("/api/public")
         ):
             request.state.tenant_id = None
             request.state.tenant = None

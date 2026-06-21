@@ -45,15 +45,55 @@ async def list_events(
 ):
     """List all events for this organization"""
     tenant_id = request.state.tenant_id
-    
+
     async with TenantDB(tenant_id) as conn:
+
         events = await conn.fetch("""
-            SELECT id, title, venue, start_date, end_date, status, created_at
-            FROM events
-            ORDER BY start_date DESC
+            SELECT
+                e.id,
+                e.title,
+                e.venue,
+                e.start_date,
+                e.end_date,
+                e.status,
+                e.created_at,
+
+                COUNT(d.id) AS delegate_count,
+
+                COUNT(
+                    CASE
+                        WHEN d.checked_in = true
+                        THEN 1
+                    END
+                ) AS checked_in_count,
+
+                COUNT(
+                    CASE
+                        WHEN d.accommodation_required = true
+                        THEN 1
+                    END
+                ) AS accommodation_count
+
+            FROM events e
+
+            LEFT JOIN delegates d
+                ON d.event_id = e.id
+
+            GROUP BY
+                e.id,
+                e.title,
+                e.venue,
+                e.start_date,
+                e.end_date,
+                e.status,
+                e.created_at
+
+            ORDER BY e.start_date DESC
         """)
-    
-    return {"events": [dict(e) for e in events]}
+
+    return {
+        "events": [dict(e) for e in events]
+    }
 
 @router.get("/{event_id}")
 async def get_event(

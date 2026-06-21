@@ -11,6 +11,12 @@ export default function DashboardPage() {
 
   const [events, setEvents] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(false);
+  const [stats, setStats] = useState({
+  total_events: 0,
+  total_delegates: 0,
+  checked_in: 0,
+  accommodation_needed: 0
+});
 
   useEffect(() => {
     if (!loading && !user) {
@@ -21,6 +27,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (user) {
       fetchEvents();
+      fetchStats();
     }
   }, [user]);
 
@@ -37,6 +44,18 @@ export default function DashboardPage() {
       setEventsLoading(false);
     }
   };
+
+  const fetchStats = async () => {
+  try {
+    const { data } = await api.get('/api/reports/dashboard');
+    setStats(data);
+  } catch (err) {
+    console.error(
+      'Failed to fetch dashboard stats:',
+      err
+    );
+  }
+};
 
   if (loading) {
     return (
@@ -91,9 +110,50 @@ export default function DashboardPage() {
           {tenant && (
             <p className="text-gray-500 text-sm mt-1">
               Organization: {tenant.name}
+
             </p>
           )}
         </div>
+
+        <section className="grid gap-4 md:grid-cols-4 mb-8">
+
+          <div className="bg-white p-6 rounded shadow">
+            <p className="text-gray-500 text-sm">
+              Total Events
+            </p>
+            <h3 className="text-3xl font-bold">
+              {stats.total_events}
+            </h3>
+          </div>
+
+          <div className="bg-white p-6 rounded shadow">
+            <p className="text-gray-500 text-sm">
+              Delegates
+            </p>
+            <h3 className="text-3xl font-bold">
+              {stats.total_delegates}
+            </h3>
+          </div>
+
+          <div className="bg-white p-6 rounded shadow">
+            <p className="text-gray-500 text-sm">
+              Checked In
+            </p>
+            <h3 className="text-3xl font-bold">
+              {stats.checked_in}
+            </h3>
+          </div>
+
+          <div className="bg-white p-6 rounded shadow">
+            <p className="text-gray-500 text-sm">
+              Accommodation
+            </p>
+            <h3 className="text-3xl font-bold">
+              {stats.accommodation_needed}
+            </h3>
+          </div>
+
+        </section>
 
         {/* Events Section */}
         <section className="card">
@@ -140,10 +200,37 @@ export default function DashboardPage() {
                     {new Date(event.end_date).toLocaleDateString()}
                   </p>
 
-                  <div className="flex gap-2">
+                  <div className="space-y-2">
+
                     <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
                       {event.status}
                     </span>
+
+                    <div className="mt-2">
+                      <p className="text-xs text-gray-500">
+                        Registration Link
+                      </p>
+
+                      <input
+                        readOnly
+                        value={`http://localhost:3000/register?event=${event.id}&tenant=${tenant?.id}`}
+                        className="w-full border rounded px-2 py-1 text-xs"
+                      />
+                    </div>
+
+                    <button
+                      onClick={() => {
+                       navigator.clipboard.writeText(
+                         `http://localhost:3000/register?event=${event.id}&tenant=${tenant?.id}`
+                        );
+
+                        alert('Registration link copied!');
+                      }}
+                      className="bg-green-600 text-white px-3 py-1 rounded text-sm"
+                    >
+                      Copy Link
+                    </button>
+
                   </div>
                 </div>
               ))}
@@ -201,7 +288,7 @@ export default function DashboardPage() {
 >
   <p className="text-2xl mb-2">📷</p>
   <p className="font-semibold">Scanner</p>
-</button>s
+</button>
 
         </section>
 

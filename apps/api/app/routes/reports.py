@@ -119,6 +119,47 @@ async def attendance_details(
         """, event_id)
 
     return {
-        "event_id": event_id,
-        "delegates": [dict(d) for d in delegates]
+    "event_id": event_id,
+    "delegates": [dict(d) for d in delegates]
+}
+
+
+@router.get("/dashboard")
+async def dashboard_stats(
+    request: Request,
+    current_user: dict = Depends(require_any_staff)
+):
+    tenant_id = request.state.tenant_id
+
+    async with TenantDB(tenant_id) as conn:
+
+        total_events = await conn.fetchval(
+            "SELECT COUNT(*) FROM events"
+        )
+
+        total_delegates = await conn.fetchval(
+            "SELECT COUNT(*) FROM delegates"
+        )
+
+        checked_in = await conn.fetchval(
+            """
+            SELECT COUNT(*)
+            FROM delegates
+            WHERE checked_in = true
+            """
+        )
+
+        accommodation_needed = await conn.fetchval(
+            """
+            SELECT COUNT(*)
+            FROM delegates
+            WHERE accommodation_required = true
+            """
+        )
+
+    return {
+        "total_events": total_events,
+        "total_delegates": total_delegates,
+        "checked_in": checked_in,
+        "accommodation_needed": accommodation_needed
     }
