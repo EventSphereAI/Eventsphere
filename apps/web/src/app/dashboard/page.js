@@ -201,7 +201,9 @@ export default function DashboardPage() {
 >
   <p className="text-2xl mb-2">📷</p>
   <p className="font-semibold">Scanner</p>
-</button>s
+</button>
+
+
 
         </section>
 

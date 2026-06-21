@@ -1,201 +1,116 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import api from '@/utils/api';
+import { useRouter } from 'next/navigation';
 
 export default function AttendancePage() {
-  const [events, setEvents] = useState([]);
-  const [selectedEvent, setSelectedEvent] = useState('');
-
-  const [attendance, setAttendance] = useState(null);
-  const [delegates, setDelegates] = useState([]);
-
-  const [search, setSearch] = useState('');
-
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  useEffect(() => {
-    if (selectedEvent) {
-      loadAttendance();
-    }
-  }, [selectedEvent]);
-
-  const fetchEvents = async () => {
-    try {
-      const { data } = await api.get('/api/events/');
-
-      setEvents(data.events || []);
-
-      if (data.events?.length > 0) {
-        setSelectedEvent(data.events[0].id);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const loadAttendance = async () => {
-    try {
-      const attendanceRes = await api.get(
-        `/api/reports/attendance/${selectedEvent}`
-      );
-
-      const detailsRes = await api.get(
-        `/api/reports/attendance-details/${selectedEvent}`
-      );
-
-      setAttendance(attendanceRes.data);
-      setDelegates(detailsRes.data.delegates || []);
-
-    } catch (err) {
-      console.error(err);
-      alert('Failed to load attendance');
-    }
-  };
-
-  const filteredDelegates = useMemo(() => {
-    return delegates.filter((delegate) => {
-      const term = search.toLowerCase();
-
-      return (
-        delegate.full_name?.toLowerCase().includes(term) ||
-        delegate.email?.toLowerCase().includes(term) ||
-        delegate.college?.toLowerCase().includes(term)
-      );
-    });
-  }, [delegates, search]);
+  const router = useRouter();
 
   return (
-    <div className="max-w-7xl mx-auto p-8">
+    <div className="min-h-screen bg-slate-100 p-6">
 
-      <h1 className="text-3xl font-bold mb-6">
-        Attendance Management
-      </h1>
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-slate-900">
+          Attendance Management
+        </h1>
 
-      <select
-        value={selectedEvent}
-        onChange={(e) => setSelectedEvent(e.target.value)}
-        className="w-full border p-3 rounded mb-6"
-      >
-        {events.map((event) => (
-          <option key={event.id} value={event.id}>
-            {event.title}
-          </option>
-        ))}
-      </select>
+        <p className="text-slate-600 mt-2">
+          Scan delegates and manage event attendance.
+        </p>
+      </div>
 
-      {attendance && (
-        <div className="grid md:grid-cols-4 gap-4 mb-8">
+      {/* Stats */}
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4 mb-8">
 
-          <div className="bg-white p-6 rounded shadow">
-            <p className="text-gray-500">
-              Total Delegates
-            </p>
-            <h3 className="text-3xl font-bold">
-              {attendance.total_delegates}
-            </h3>
-          </div>
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
+          <p className="text-slate-500 text-sm">
+            Present Today
+          </p>
 
-          <div className="bg-white p-6 rounded shadow">
-            <p className="text-gray-500">
-              Checked In
-            </p>
-            <h3 className="text-3xl font-bold text-green-600">
-              {attendance.checked_in}
-            </h3>
-          </div>
-
-          <div className="bg-white p-6 rounded shadow">
-            <p className="text-gray-500">
-              Pending
-            </p>
-            <h3 className="text-3xl font-bold text-red-600">
-              {attendance.total_delegates - attendance.checked_in}
-            </h3>
-          </div>
-
-          <div className="bg-white p-6 rounded shadow">
-            <p className="text-gray-500">
-              Attendance %
-            </p>
-            <h3 className="text-3xl font-bold">
-              {attendance.attendance_rate}%
-            </h3>
-          </div>
-
+          <h2 className="text-4xl font-bold mt-3 text-slate-900">
+            1245
+          </h2>
         </div>
-      )}
 
-      <input
-        type="text"
-        placeholder="Search by name, email or college..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full border p-3 rounded mb-6"
-      />
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
+          <p className="text-slate-500 text-sm">
+            Currently Inside
+          </p>
 
-      <div className="bg-white rounded shadow overflow-hidden">
+          <h2 className="text-4xl font-bold mt-3 text-emerald-600">
+            982
+          </h2>
+        </div>
 
-        <table className="w-full">
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
+          <p className="text-slate-500 text-sm">
+            Checked Out
+          </p>
 
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="text-left p-4">Name</th>
-              <th className="text-left p-4">Email</th>
-              <th className="text-left p-4">College</th>
-              <th className="text-left p-4">Status</th>
-              <th className="text-left p-4">Check-In Time</th>
-            </tr>
-          </thead>
+          <h2 className="text-4xl font-bold mt-3 text-amber-500">
+            263
+          </h2>
+        </div>
 
-          <tbody>
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
+          <p className="text-slate-500 text-sm">
+            Attendance Rate
+          </p>
 
-            {filteredDelegates.map((delegate) => (
-              <tr
-                key={delegate.id}
-                className="border-t"
-              >
-                <td className="p-4">
-                  {delegate.full_name}
-                </td>
+          <h2 className="text-4xl font-bold mt-3 text-violet-600">
+            78%
+          </h2>
+        </div>
 
-                <td className="p-4">
-                  {delegate.email}
-                </td>
+      </div>
 
-                <td className="p-4">
-                  {delegate.college}
-                </td>
+      {/* Scanner Card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
 
-                <td className="p-4">
+        <h2 className="text-2xl font-semibold text-slate-900 mb-2">
+          Attendance Scanner
+        </h2>
 
-                  {delegate.checked_in ? (
-                    <span className="px-3 py-1 rounded bg-green-100 text-green-700">
-                      Checked In
-                    </span>
-                  ) : (
-                    <span className="px-3 py-1 rounded bg-red-100 text-red-700">
-                      Pending
-                    </span>
-                  )}
+        <p className="text-slate-500 mb-6">
+          Click below to start scanning delegate QR codes.
+        </p>
 
-                </td>
+        <div
+          onClick={() => router.push('/attendance/scanner')}
+          className="
+            h-96
+            rounded-2xl
+            bg-gradient-to-br
+            from-violet-50
+            to-slate-50
+            border-2
+            border-dashed
+            border-violet-300
+            flex
+            items-center
+            justify-center
+            cursor-pointer
+            hover:scale-[1.01]
+            hover:bg-violet-100
+            transition
+          "
+        >
+          <div className="text-center">
 
-                <td className="p-4">
-                  {delegate.checked_in_at
-                    ? new Date(
-                        delegate.checked_in_at
-                      ).toLocaleString()
-                    : '-'}
-                </td>
-              </tr>
-            ))}
+            <div className="text-7xl mb-4">
+              📷
+            </div>
 
-          </tbody>
+            <h3 className="text-2xl font-semibold text-slate-800">
+              Open Scanner
+            </h3>
 
-        </table>
+            <p className="text-slate-500 mt-2">
+              Tap anywhere in this area
+            </p>
+
+          </div>
+        </div>
 
       </div>
 

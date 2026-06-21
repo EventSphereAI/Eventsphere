@@ -59,7 +59,7 @@ async def register_tenant(body: RegisterTenantRequest):
                 # Create first admin user
                 await conn.execute("""
                     INSERT INTO users (id, tenant_id, email, password_hash, full_name, role)
-                    VALUES ($1, $2, $3, $4, $5, 'organizer')
+                    VALUES ($1, $2, $3, $4, $5, 'admin')
                 """, user_id, tenant_id, body.email,
                     hash_password(body.password), body.name)
 
@@ -70,7 +70,7 @@ async def register_tenant(body: RegisterTenantRequest):
     token_data = {
         "sub": user_id,
         "tenant_id": tenant_id,
-        "role": "organizer",
+        "role": "admin",
         "email": body.email
     }
 
@@ -85,7 +85,7 @@ async def register_tenant(body: RegisterTenantRequest):
             "id": user_id,
             "email": body.email,
             "name": body.name,
-            "role": "organizer"
+            "role": "admin"
         },
         "access_token": create_access_token(token_data),
         "refresh_token": create_refresh_token(token_data),

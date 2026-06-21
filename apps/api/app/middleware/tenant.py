@@ -20,12 +20,13 @@ class TenantMiddleware(BaseHTTPMiddleware):
 
         # Public endpoints — no tenant needed
         if (
-            request.url.path.startswith("/docs")
-            or request.url.path.startswith("/openapi.json")
-            or request.url.path.startswith("/redoc")
-            or request.url.path == "/api/health"
-            or request.url.path == "/api/auth/register-tenant"
-        ):
+request.url.path.startswith("/docs")
+or request.url.path.startswith("/openapi.json")
+or request.url.path.startswith("/redoc")
+or request.url.path == "/api/health"
+or request.url.path == "/api/auth/register-tenant"
+or request.url.path == "/api/public/register"
+):  
             request.state.tenant_id = None
             request.state.tenant = None
             return await call_next(request)

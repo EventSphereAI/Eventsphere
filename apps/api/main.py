@@ -4,7 +4,7 @@ load_dotenv()
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-
+from app.routes.public import router as public_router
 from app.database.connection import connect_db, disconnect_db
 from app.routes import auth, tenants, events, delegates, scanning, food, accommodation, reports
 from app.middleware.tenant import TenantMiddleware
@@ -43,6 +43,7 @@ app.add_middleware(
 app.add_middleware(TenantMiddleware)
 
 # Routes
+app.include_router(public_router, prefix="/api")
 app.include_router(auth.router,          prefix="/api/auth",          tags=["Auth"])
 app.include_router(tenants.router,       prefix="/api/tenants",       tags=["Tenants"])
 app.include_router(events.router,        prefix="/api/events",        tags=["Events"])

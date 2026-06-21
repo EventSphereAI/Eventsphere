@@ -82,8 +82,52 @@ def require_roles(*roles: str):
         return current_user
     return _check
 
-require_organizer = require_roles("organizer", "super_admin")
+# ── EventSphere Role Guards ─────────────────────────────
+
+require_super_admin = require_roles(
+    "super_admin"
+)
+
+require_admin = require_roles(
+    "admin",
+    "super_admin"
+)
+
+require_registration = require_roles(
+    "registration",
+    "admin",
+    "super_admin"
+)
+
+require_attendance = require_roles(
+    "attendance",
+    "admin",
+    "super_admin"
+)
+
+require_food = require_roles(
+    "food",
+    "admin",
+    "super_admin"
+)
+
+require_accommodation = require_roles(
+    "accommodation",
+    "admin",
+    "super_admin"
+)
+
+require_kit = require_roles(
+    "kit",
+    "admin",
+    "super_admin"
+)
 require_any_staff = require_roles(
-    "organizer", "registration_team", "food_staff",
-    "hospitality_team", "logistics_team", "technical_team", "super_admin"
+    "admin",
+    "registration",
+    "attendance",
+    "food",
+    "accommodation",
+    "kit",
+    "super_admin"
 )
