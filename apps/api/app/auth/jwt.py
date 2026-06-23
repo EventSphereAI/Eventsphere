@@ -89,6 +89,7 @@ require_super_admin = require_roles(
 )
 
 require_admin = require_roles(
+    "organizer",
     "admin",
     "super_admin"
 )
@@ -123,6 +124,7 @@ require_kit = require_roles(
     "super_admin"
 )
 require_any_staff = require_roles(
+    "organizer",
     "admin",
     "registration",
     "attendance",
