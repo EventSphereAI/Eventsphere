@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import api from '@/utils/api';
+
 
 export default function SuperAdminPage() {
   const router = useRouter();
@@ -11,6 +13,9 @@ export default function SuperAdminPage() {
   const [analytics, setAnalytics] = useState(null);
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [planFilter, setPlanFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     loadData();
@@ -44,30 +49,46 @@ export default function SuperAdminPage() {
   };
 
   const suspendTenant = async (tenantId) => {
-    try {
-      await api.patch(
-        `/api/super_admin/tenant/${tenantId}/suspend`
-      );
+  const confirmed = confirm(
+    'Are you sure you want to suspend this organization?'
+  );
 
-      await loadData();
-    } catch (error) {
-      console.error(error);
-      alert('Failed to suspend tenant');
-    }
-  };
+  if (!confirmed) return;
+
+  try {
+    await api.patch(
+      `/api/super_admin/tenant/${tenantId}/suspend`
+    );
+
+    await loadData();
+
+    alert('Organization suspended successfully');
+  } catch (error) {
+    console.error(error);
+    alert('Failed to suspend tenant');
+  }
+};
 
   const activateTenant = async (tenantId) => {
-    try {
-      await api.patch(
-        `/api/super_admin/tenant/${tenantId}/activate`
-      );
+  const confirmed = confirm(
+    'Are you sure you want to activate this organization?'
+  );
 
-      await loadData();
-    } catch (error) {
-      console.error(error);
-      alert('Failed to activate tenant');
-    }
-  };
+  if (!confirmed) return;
+
+  try {
+    await api.patch(
+      `/api/super_admin/tenant/${tenantId}/activate`
+    );
+
+    await loadData();
+
+    alert('Organization activated');
+  } catch (error) {
+    console.error(error);
+    alert('Failed to activate tenant');
+  }
+};
 
   const updatePlan = async (tenantId, plan) => {
     try {
@@ -97,17 +118,34 @@ export default function SuperAdminPage() {
     <div className="min-h-screen bg-slate-100 p-8">
 
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold">
-          EventSphere Super Admin
-        </h1>
+  <h1 className="text-4xl font-bold">
+    EventSphere Super Admin
+  </h1>
 
-        <button
-          onClick={() => router.push('/super-admin/users')}
-          className="bg-slate-900 text-white px-4 py-2 rounded-lg"
-        >
-          Platform Users
-        </button>
-      </div>
+  <div className="flex gap-3">
+    <button
+      onClick={() => router.push('/super-admin/users')}
+      className="bg-slate-900 text-white px-4 py-2 rounded-lg"
+    >
+      Platform Users
+    </button>
+
+    <button
+      onClick={() => router.push('/super-admin/founders')}
+      className="bg-slate-900 text-white px-4 py-2 rounded-lg"
+    >
+      Founders
+    </button>
+
+    <Link
+      href="/super-admin/audit-logs"
+      className="bg-slate-900 text-white px-4 py-2 rounded-lg"
+    >
+      Audit Logs
+    </Link>
+  </div>
+</div>
+
 
       {/* Dashboard Stats */}
 
@@ -180,6 +218,39 @@ export default function SuperAdminPage() {
         </div>
       </div>
 
+      <div className="flex gap-4 mb-6 flex-wrap">
+
+  <input
+    type="text"
+    placeholder="Search organization..."
+    value={search}
+    onChange={(e) => setSearch(e.target.value)}
+    className="border rounded px-4 py-2 w-80"
+  />
+
+  <select
+    value={planFilter}
+    onChange={(e) => setPlanFilter(e.target.value)}
+    className="border rounded px-4 py-2"
+  >
+    <option value="all">All Plans</option>
+    <option value="free">Free</option>
+    <option value="pro">Pro</option>
+    <option value="enterprise">Enterprise</option>
+  </select>
+
+  <select
+    value={statusFilter}
+    onChange={(e) => setStatusFilter(e.target.value)}
+    className="border rounded px-4 py-2"
+  >
+    <option value="all">All Status</option>
+    <option value="active">Active</option>
+    <option value="suspended">Suspended</option>
+  </select>
+
+</div>
+
       {/* Organizations */}
 
       <div className="bg-white rounded-xl shadow p-6">
@@ -202,7 +273,33 @@ export default function SuperAdminPage() {
 
             <tbody>
 
-              {tenants.map((tenant) => (
+              {tenants
+  .filter((tenant) => {
+    const matchesSearch =
+      tenant.name
+        .toLowerCase()
+        .includes(search.toLowerCase()) ||
+      tenant.slug
+        .toLowerCase()
+        .includes(search.toLowerCase());
+
+    const matchesPlan =
+      planFilter === 'all' ||
+      tenant.plan === planFilter;
+
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'active' &&
+        tenant.is_active) ||
+      (statusFilter === 'suspended' &&
+        !tenant.is_active);
+
+    return (
+      matchesSearch &&
+      matchesPlan &&
+      matchesStatus
+    );
+  })              .map((tenant) => (
                 <tr
                   key={tenant.id}
                   className="border-b hover:bg-slate-50"

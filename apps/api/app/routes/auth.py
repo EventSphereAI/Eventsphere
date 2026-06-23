@@ -157,6 +157,8 @@ async def login(
         None
     )
 
+    print("LOGIN TENANT ID:", tenant_id)
+
     if not tenant_id:
         raise HTTPException(
             status_code=400,

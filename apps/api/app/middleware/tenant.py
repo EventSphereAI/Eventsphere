@@ -26,17 +26,21 @@ class TenantMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         # Public endpoints
+        # Public endpoints
         if (
-    request.url.path.startswith("/docs")
-    or request.url.path.startswith("/openapi.json")
-    or request.url.path.startswith("/redoc")
-    or request.url.path == "/api/health"
-    or request.url.path == "/api/auth/register-tenant"
-    or request.url.path.startswith("/api/test")
-    or request.url.path.startswith("/api/public")
-):
+            request.url.path.startswith("/docs")
+            or request.url.path.startswith("/openapi.json")
+            or request.url.path.startswith("/redoc")
+            or request.url.path == "/api/health"
+            or request.url.path.startswith("/api/test")
+            or request.url.path.startswith("/api/public")
+
+            # Auth routes
+            or request.url.path == "/api/auth/register-tenant"
+        ):
             request.state.tenant_id = None
             request.state.tenant = None
+
             return await call_next(request)
 
         tenant_slug = self._extract_slug(request)
@@ -86,6 +90,8 @@ class TenantMiddleware(BaseHTTPMiddleware):
         request.state.tenant = dict(tenant)
 
         print("TENANT ID SET:", request.state.tenant_id)
+        print("TENANT ID SET:", request.state.tenant_id)
+        print("TENANT NAME:", request.state.tenant["name"])
 
         return await call_next(request)
 
