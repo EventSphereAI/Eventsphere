@@ -27,20 +27,23 @@ class TenantMiddleware(BaseHTTPMiddleware):
 
         # Public endpoints
         if (
-            request.url.path.startswith("/docs")
-            or request.url.path.startswith("/openapi.json")
-            or request.url.path.startswith("/redoc")
-            or request.url.path == "/api/health"
-            or request.url.path == "/api/auth/register-tenant"
-            or request.url.path.startswith("/api/test")
-            or request.url.path.startswith("/api/public")
-        ):
+    request.url.path.startswith("/docs")
+    or request.url.path.startswith("/openapi.json")
+    or request.url.path.startswith("/redoc")
+    or request.url.path == "/api/health"
+    or request.url.path == "/api/auth/register-tenant"
+    or request.url.path.startswith("/api/test")
+    or request.url.path.startswith("/api/public")
+):
             request.state.tenant_id = None
             request.state.tenant = None
             return await call_next(request)
 
         tenant_slug = self._extract_slug(request)
-
+        if request.url.path.startswith("/api/super_admin"):
+            tenant_slug = "eventsphere-admin"
+        else:
+            tenant_slug = self._extract_slug(request)
         print("EXTRACTED TENANT SLUG:", tenant_slug)
 
         if not tenant_slug:

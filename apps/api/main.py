@@ -8,6 +8,7 @@ from app.routes.public import router as public_router
 from app.database.connection import connect_db, disconnect_db
 from app.routes import auth, tenants, events, delegates, scanning, food, accommodation, reports, public
 from app.middleware.tenant import TenantMiddleware
+from app.routes import super_admin
 
 from app.routes import test_email
 
@@ -56,7 +57,7 @@ app.include_router(accommodation.router, prefix="/api/accommodation", tags=["Acc
 app.include_router(reports.router,       prefix="/api/reports",       tags=["Reports"])
 app.include_router(public.router,        prefix="/api/public",        tags=["Public"])
 app.include_router(test_email.router,    prefix="/api/test",          tags=["Testing"])
-
+app.include_router(super_admin.router,   prefix="/api/super_admin",   tags=["Super Admin"])
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "service": "EventSphere API v1.0.0"}

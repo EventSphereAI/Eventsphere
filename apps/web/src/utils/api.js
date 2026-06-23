@@ -15,7 +15,7 @@ api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('access_token');
 
-    config.headers['X-Tenant-Slug'] = 'raj-enterprises';
+    config.headers['X-Tenant-Slug'] = 'eventsphere-admin';
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
