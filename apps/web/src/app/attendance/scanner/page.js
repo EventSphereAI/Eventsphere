@@ -1,9 +1,8 @@
   'use client';
 
-  import { useState } from 'react';
-  import QRCodeScanner from '@/components/QRCodeScanner';
-  import { useEffect, useState } from 'react';
-  import api from '@/utils/api';
+  import { useState, useEffect } from 'react';
+import QRCodeScanner from '@/components/QRCodeScanner';
+import api from '@/utils/api';
 
   export default function AttendanceScannerPage() {
     const [scanResult, setScanResult] = useState(null);
@@ -78,23 +77,7 @@
 
             <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 min-h-[500px]">
 
-              {!processing && (
-                <QRCodeScanner
-                  onScan={handleScan}
-                />
-              )}
-
-              {processing && (
-                <div className="h-[500px] flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="text-5xl mb-4">⏳</div>
-                    <p className="text-lg font-medium">
-                      Processing Scan...
-                    </p>
-                  </div>
-                </div>
-              )}
-
+              <QRCodeScanner onScan={handleScan} />
             </div>
 
           </div>

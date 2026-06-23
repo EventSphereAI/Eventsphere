@@ -290,7 +290,13 @@ export default function DashboardPage() {
   <p className="font-semibold">Scanner</p>
 </button>
 
-
+<button
+  onClick={() => router.push('/food')}
+  className="card text-center hover:shadow-lg transition"
+>
+  <p className="text-2xl mb-2">🍽️</p>
+  <p className="font-semibold">Food</p>
+</button>
         </section>
 
       </main>
