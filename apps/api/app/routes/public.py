@@ -1,24 +1,4 @@
-<<<<<<< HEAD
-from fastapi import APIRouter
-from pydantic import BaseModel, EmailStr
 
-router = APIRouter(
-    prefix="/public",
-    tags=["Public"]
-)
-
-class DelegateRegistration(BaseModel):
-    full_name: str
-    email: EmailStr
-    phone: str
-
-@router.post("/register")
-async def register_delegate(payload: DelegateRegistration):
-    return {
-        "success": True,
-        "data": payload.dict()
-    }
-=======
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
 from app.database.connection import TenantDB
@@ -234,4 +214,4 @@ async def public_event(
         )
 
     return dict(event)
->>>>>>> 8c0397d11e5f9c09ea062eba15f84d73f6067253
+

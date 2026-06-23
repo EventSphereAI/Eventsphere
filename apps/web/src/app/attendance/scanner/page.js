@@ -1,9 +1,8 @@
   'use client';
 
-  import { useState } from 'react';
-  import QRCodeScanner from '@/components/QRCodeScanner';
-  import { useEffect, useState } from 'react';
-  import api from '@/utils/api';
+import { useState, useEffect } from 'react';
+import QRCodeScanner from '@/components/QRCodeScanner';
+import api from '@/utils/api';
 
   export default function AttendanceScannerPage() {
     const [scanResult, setScanResult] = useState(null);
