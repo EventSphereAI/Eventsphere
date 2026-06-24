@@ -8,8 +8,8 @@ router = APIRouter()
 async def send_test():
 
     result = await send_registration_email(
-        email="devaghadge16@gmail.com",
-        name="Dev Aghadge",
+        email="swayam.panchal23@pcu.edu.in",
+        name="Swayam Panchal",
         event_name="EventSphere Test Event",
         qr_token="TEST-QR-123456789"
     )
