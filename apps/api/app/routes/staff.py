@@ -35,23 +35,24 @@ async def list_staff(
 ):
     async with TenantDB(current_user["tenant_id"]) as conn:
 
-        staff = await conn.fetch(
-            """
-            SELECT
-                id,
-                full_name,
-                email,
-                role,
-                phone,
-                is_active,
-                last_login,
-                created_at
-            FROM users
-            WHERE tenant_id = $1
-            ORDER BY created_at DESC
-            """,
-            current_user["tenant_id"]
-        )
+            staff = await conn.fetch(
+                """
+                SELECT
+                    id,
+                    full_name,
+                    email,
+                    role,
+                    phone,
+                    is_active,
+                    last_login,
+                    created_at
+                FROM users
+                WHERE tenant_id = $1
+                AND role != 'organizer'
+                ORDER BY created_at DESC
+                """,
+                current_user["tenant_id"]
+            )
 
     return [dict(s) for s in staff]
 
@@ -152,6 +153,28 @@ async def disable_staff(
     return {
         "success": True,
         "message": "Staff disabled"
+    }
+
+
+@router.patch("/{staff_id}/enable")
+async def enable_staff(
+    staff_id: str,
+    current_user: dict = Depends(require_admin)
+):
+    async with TenantDB(current_user["tenant_id"]) as conn:
+
+        await conn.execute(
+            """
+            UPDATE users
+            SET is_active = true
+            WHERE id = $1
+            """,
+            staff_id
+        )
+
+    return {
+        "success": True,
+        "message": "Staff enabled"
     }
 
 

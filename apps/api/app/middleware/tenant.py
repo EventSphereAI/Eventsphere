@@ -115,3 +115,4 @@ class TenantMiddleware(BaseHTTPMiddleware):
                 return slug
 
         return None
+    

@@ -304,6 +304,14 @@ export default function DashboardPage() {
   <p className="text-2xl mb-2">🍽️</p>
   <p className="font-semibold">Food</p>
 </button>
+
+<button
+  onClick={() => router.push('/staff')}
+  className="card text-center hover:shadow-lg transition"
+>
+  <p className="text-2xl mb-2">👨‍💼</p>
+  <p className="font-semibold">Staff</p>
+</button>
         </section>
 
       </main>

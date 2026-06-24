@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import api from '@/utils/api';
+import RoleGuard from '@/components/RoleGuard';
+import { PERMISSIONS } from '@/config/permissions';
 
 
 export default function SuperAdminPage() {
@@ -115,6 +117,7 @@ export default function SuperAdminPage() {
   }
 
   return (
+    <RoleGuard allowedRoles={PERMISSIONS.SUPER_ADMIN}>
     <div className="min-h-screen bg-slate-100 p-8">
 
       <div className="flex justify-between items-center mb-8">
@@ -410,5 +413,6 @@ export default function SuperAdminPage() {
       </div>
 
     </div>
+    </RoleGuard>
   );
 }

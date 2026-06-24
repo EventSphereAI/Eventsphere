@@ -255,14 +255,6 @@ curl -X POST http://localhost:8000/api/auth/register-tenant \
     "name": "Admin User"
   }'
 
-# Login
-curl -X POST http://localhost:8000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -H "X-Tenant-Slug: test-org" \
-  -d '{
-    "email": "admin@test.org",
-    "password": "password123"
-  }'
 ```
 
 ## 📝 Environment Variables
