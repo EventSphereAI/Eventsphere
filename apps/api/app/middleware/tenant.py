@@ -15,11 +15,17 @@ class TenantMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
 
+        print("\n========== TENANT MIDDLEWARE ==========")
+        print("PATH:", request.url.path)
+        print("METHOD:", request.method)
+        print("HEADERS:", dict(request.headers))
+        print("=======================================\n")
+
         # Allow CORS preflight requests
         if request.method == "OPTIONS":
             return await call_next(request)
 
-        # Public endpoints — no tenant needed
+        # Public endpoints
         if (
             request.url.path.startswith("/docs")
             or request.url.path.startswith("/openapi.json")
@@ -35,6 +41,8 @@ class TenantMiddleware(BaseHTTPMiddleware):
 
         tenant_slug = self._extract_slug(request)
 
+        print("EXTRACTED TENANT SLUG:", tenant_slug)
+
         if not tenant_slug:
             return JSONResponse(
                 {"error": "Tenant not found"},
@@ -45,12 +53,19 @@ class TenantMiddleware(BaseHTTPMiddleware):
 
         tenant = await pool.fetchrow(
             """
-            SELECT id, slug, name, plan, is_active
+            SELECT
+                id,
+                slug,
+                name,
+                plan,
+                is_active
             FROM tenants
             WHERE slug = $1
             """,
             tenant_slug
         )
+
+        print("TENANT FROM DB:", tenant)
 
         if not tenant:
             return JSONResponse(
@@ -67,19 +82,27 @@ class TenantMiddleware(BaseHTTPMiddleware):
         request.state.tenant_id = str(tenant["id"])
         request.state.tenant = dict(tenant)
 
+        print("TENANT ID SET:", request.state.tenant_id)
+
         return await call_next(request)
 
     def _extract_slug(self, request: Request) -> str | None:
+
         host = request.headers.get("host", "")
 
-        # Dev mode: pass slug via header
+        # Development mode
         dev_slug = request.headers.get("X-Tenant-Slug")
+
         if dev_slug:
+            print("TENANT HEADER FOUND:", dev_slug)
             return dev_slug
 
-        # Production: parse from subdomain
+        # Production mode
         if host.endswith(f".{PLATFORM_DOMAIN}"):
             slug = host[: -(len(PLATFORM_DOMAIN) + 1)]
-            return slug if slug else None
+
+            if slug:
+                print("TENANT SUBDOMAIN FOUND:", slug)
+                return slug
 
         return None

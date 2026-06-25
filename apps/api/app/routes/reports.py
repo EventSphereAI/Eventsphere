@@ -131,6 +131,11 @@ async def dashboard_stats(
 ):
     tenant_id = request.state.tenant_id
 
+    print("========== DASHBOARD ==========")
+    print("TENANT ID:", tenant_id)
+    print("USER:", current_user)
+    print("===============================")
+
     async with TenantDB(tenant_id) as conn:
 
         total_events = await conn.fetchval(
@@ -163,3 +168,4 @@ async def dashboard_stats(
         "checked_in": checked_in,
         "accommodation_needed": accommodation_needed
     }
+

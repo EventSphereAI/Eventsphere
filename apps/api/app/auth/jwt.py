@@ -88,46 +88,56 @@ require_super_admin = require_roles(
     "super_admin"
 )
 
+# Organization Owner
 require_admin = require_roles(
-    "admin",
+    "organizer",
     "super_admin"
 )
 
+# Registration Team
 require_registration = require_roles(
-    "registration",
-    "admin",
+    "registration_team",
+    "organizer",
     "super_admin"
 )
 
+# Attendance Scanner Team
 require_attendance = require_roles(
-    "attendance",
-    "admin",
+    "technical_team",
+    "organizer",
     "super_admin"
 )
 
+# Food Team
 require_food = require_roles(
-    "food",
-    "admin",
+    "food_staff",
+    "organizer",
     "super_admin"
 )
 
+# Accommodation Team
 require_accommodation = require_roles(
-    "accommodation",
-    "admin",
+    "hospitality_team",
+    "organizer",
     "super_admin"
 )
 
+# Kit Distribution Team
 require_kit = require_roles(
-    "kit",
-    "admin",
+    "registration_team",
+    "organizer",
     "super_admin"
 )
+
+# Any Staff
 require_any_staff = require_roles(
-    "admin",
-    "registration",
-    "attendance",
-    "food",
-    "accommodation",
-    "kit",
+    "organizer",
+    "registration_team",
+    "hospitality_team",
+    "food_staff",
+    "technical_team",
+    "logistics_team",
+    "volunteer_coordinator",
+    "volunteer",
     "super_admin"
 )
