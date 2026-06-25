@@ -38,6 +38,7 @@ class RefreshRequest(BaseModel):
 @router.post("/register-tenant", status_code=201)
 async def register_tenant(body: RegisterTenantRequest):
 
+    
     pool = get_pool()
 
     existing = await pool.fetchrow(
@@ -57,6 +58,10 @@ async def register_tenant(body: RegisterTenantRequest):
 
     tenant_id = str(uuid.uuid4())
     user_id = str(uuid.uuid4())
+
+    hashed_password = hash_password(body.password)
+
+    
 
     try:
 
@@ -106,7 +111,7 @@ async def register_tenant(body: RegisterTenantRequest):
                     user_id,
                     tenant_id,
                     body.email,
-                    hash_password(body.password),
+                    hashed_password,
                     body.name
                 )
 
@@ -150,14 +155,8 @@ async def login(
     body: LoginRequest,
     request: Request
 ):
+    tenant_id = getattr(request.state, "tenant_id", None)
 
-    tenant_id = getattr(
-        request.state,
-        "tenant_id",
-        None
-    )
-
-    print("LOGIN TENANT ID:", tenant_id)
 
     if not tenant_id:
         raise HTTPException(
@@ -178,8 +177,10 @@ async def login(
                 is_active
             FROM users
             WHERE email = $1
+            AND tenant_id = $2
             """,
-            body.email
+            body.email,
+            tenant_id
         )
 
         tenant = await conn.fetchrow(
@@ -194,16 +195,21 @@ async def login(
             tenant_id
         )
 
+
     if not user:
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
         )
-
-    if not verify_password(
+    
+    match = verify_password(
         body.password,
         user["password_hash"]
-    ):
+    )
+
+    
+
+    if not match:
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
