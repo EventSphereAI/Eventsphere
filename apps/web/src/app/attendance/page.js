@@ -1,16 +1,27 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 export default function AttendancePage() {
   const router = useRouter();
 
-  return (
-    <div className="min-h-screen bg-slate-100 p-6">
+  const [attendanceMode, setAttendanceMode] = useState('entry');
 
-      {/* Header */}
+  const openScanner = () => {
+    localStorage.setItem(
+      'attendanceMode',
+      attendanceMode
+    );
+
+    router.push('/attendance/scanner');
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-100 p-4 md:p-6">
+
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900">
+        <h1 className="text-3xl md:text-4xl font-bold text-slate-900">
           Attendance Management
         </h1>
 
@@ -20,14 +31,13 @@ export default function AttendancePage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4 mb-8">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 mb-8">
 
         <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
           <p className="text-slate-500 text-sm">
             Present Today
           </p>
-
-          <h2 className="text-4xl font-bold mt-3 text-slate-900">
+          <h2 className="text-4xl font-bold mt-3">
             1245
           </h2>
         </div>
@@ -36,7 +46,6 @@ export default function AttendancePage() {
           <p className="text-slate-500 text-sm">
             Currently Inside
           </p>
-
           <h2 className="text-4xl font-bold mt-3 text-emerald-600">
             982
           </h2>
@@ -46,7 +55,6 @@ export default function AttendancePage() {
           <p className="text-slate-500 text-sm">
             Checked Out
           </p>
-
           <h2 className="text-4xl font-bold mt-3 text-amber-500">
             263
           </h2>
@@ -56,7 +64,6 @@ export default function AttendancePage() {
           <p className="text-slate-500 text-sm">
             Attendance Rate
           </p>
-
           <h2 className="text-4xl font-bold mt-3 text-violet-600">
             78%
           </h2>
@@ -64,10 +71,49 @@ export default function AttendancePage() {
 
       </div>
 
-      {/* Scanner Card */}
+      {/* Mode Selector */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
+
+        <h2 className="text-xl font-semibold mb-4">
+          Attendance Mode
+        </h2>
+
+        <select
+          value={attendanceMode}
+          onChange={(e) =>
+            setAttendanceMode(e.target.value)
+          }
+          className="w-full md:w-72 border border-slate-300 rounded-xl px-4 py-3"
+        >
+          <option value="entry">
+            Check In
+          </option>
+
+          <option value="exit">
+            Check Out
+          </option>
+        </select>
+
+        <div className="mt-4">
+
+          {attendanceMode === 'entry' ? (
+            <span className="px-4 py-2 rounded-full bg-green-100 text-green-700">
+              🟢 Check In Mode Active
+            </span>
+          ) : (
+            <span className="px-4 py-2 rounded-full bg-red-100 text-red-700">
+              🔴 Check Out Mode Active
+            </span>
+          )}
+
+        </div>
+
+      </div>
+
+      {/* Scanner Launch */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
 
-        <h2 className="text-2xl font-semibold text-slate-900 mb-2">
+        <h2 className="text-2xl font-semibold mb-2">
           Attendance Scanner
         </h2>
 
@@ -76,9 +122,9 @@ export default function AttendancePage() {
         </p>
 
         <div
-          onClick={() => router.push('/attendance/scanner')}
+          onClick={openScanner}
           className="
-            h-96
+            h-72 md:h-96
             rounded-2xl
             bg-gradient-to-br
             from-violet-50
@@ -91,17 +137,16 @@ export default function AttendancePage() {
             justify-center
             cursor-pointer
             hover:scale-[1.01]
-            hover:bg-violet-100
             transition
           "
         >
           <div className="text-center">
 
-            <div className="text-7xl mb-4">
+            <div className="text-6xl md:text-7xl mb-4">
               📷
             </div>
 
-            <h3 className="text-2xl font-semibold text-slate-800">
+            <h3 className="text-xl md:text-2xl font-semibold">
               Open Scanner
             </h3>
 

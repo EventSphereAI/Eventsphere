@@ -83,6 +83,8 @@ export default function FoodPage() {
             Breakfast
           </option>
 
+          <option value="high_tea">High Tea</option>
+          
           <option value="lunch">
             Lunch
           </option>
