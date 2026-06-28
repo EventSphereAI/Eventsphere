@@ -37,8 +37,11 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:3001",
-        "*.eventsphere.app",
+        "https://eventsphere-jet.vercel.app",
+        "https://event-sphere.in",
+        "https://www.event-sphere.in",
     ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
