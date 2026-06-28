@@ -43,11 +43,7 @@ def verify_qr_token(
 ) -> str | None:
 
     try:
-        print("\n===== QR DEBUG =====")
-        print("TOKEN:", token)
-        print("TENANT:", tenant_id)
-        print("EVENT:", event_id)
-
+       
         delegate_id, sig = token.rsplit(":", 1)
 
         expected = hmac.new(
@@ -55,11 +51,6 @@ def verify_qr_token(
             f"{tenant_id}:{event_id}:{delegate_id}".encode(),
             hashlib.sha256
         ).hexdigest()[:16]
-
-        print("DELEGATE:", delegate_id)
-        print("EXPECTED:", expected)
-        print("RECEIVED:", sig)
-        print("=====================\n")
 
         if hmac.compare_digest(sig, expected):
             return delegate_id
@@ -107,16 +98,47 @@ async def scan_qr(
 
     tenant_id = request.state.tenant_id
 
+# ------------------------------------------------------
+# Role Validation
+# ------------------------------------------------------
+
+    role = current_user["role"]
+
+    if body.scan_type in ("entry", "exit"):
+        allowed = {"organizer", "super_admin", "technical_team"}
+
+    elif body.scan_type == "kit_collection":
+        allowed = {"organizer", "super_admin", "registration_team"}
+
+    elif body.scan_type in (
+        "food_breakfast",
+        "food_lunch",
+        "food_high_tea",
+        "food_dinner"
+    ):
+        allowed = {"organizer", "super_admin", "food_staff"}
+
+    elif body.scan_type in (
+        "accommodation_checkin",
+        "accommodation_checkout"
+    ):
+        allowed = {"organizer", "super_admin", "hospitality_team"}
+
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid scan type."
+        )
+
+    if role not in allowed:
+        raise HTTPException(
+            status_code=403,
+            detail="You are not authorized to perform this scan."
+        )
+
     # ------------------------------------------------------
     # 1. Verify QR Signature
     # ------------------------------------------------------
-
-    print("===== SCAN DEBUG =====")
-    print("QR TOKEN:", body.qr_token)
-    print("EVENT ID:", body.event_id)
-    print("TENANT ID:", tenant_id)
-    print("======================")
-   
    
    
     delegate_id = verify_qr_token(
@@ -250,19 +272,76 @@ async def scan_qr(
             await conn.execute(
                 """
                 UPDATE delegates
-                SET checked_in = true,
+                SET checked_in = TRUE,
                     checked_in_at = NOW()
                 WHERE id = $1
                 """,
                 delegate_id
             )
 
+            await conn.execute(
+                """
+                INSERT INTO attendance
+                (
+                    id,
+                    tenant_id,
+                    delegate_id,
+                    event_id,
+                    checkin_time
+                )
+                VALUES
+                (
+                    $1,$2,$3,$4,NOW()
+                )
+                """,
+                str(uuid.uuid4()),
+                tenant_id,
+                delegate_id,
+                body.event_id
+            )
+
         elif body.scan_type == "exit":
+
+            attendance = await conn.fetchrow(
+                """
+                SELECT
+                    id,
+                    checkin_time
+                FROM attendance
+                WHERE tenant_id = $1
+                  AND delegate_id = $2
+                  AND event_id = $3
+                  AND checkout_time IS NULL
+                ORDER BY checkin_time DESC
+                LIMIT 1
+                """,
+                tenant_id,
+                delegate_id,
+                body.event_id
+            )
+
+            if not attendance:
+                return _scan_result(
+                    False,
+                    "NOT_CHECKED_IN",
+                    "Delegate is not checked in.",
+                    dict(delegate)
+                )
+
+            await conn.execute(
+                """
+                UPDATE attendance
+                SET
+                    checkout_time = NOW()
+                WHERE id = $1
+                """,
+                attendance["id"]
+            )
 
             await conn.execute(
                 """
                 UPDATE delegates
-                SET checked_in = false
+                SET checked_in = FALSE
                 WHERE id = $1
                 """,
                 delegate_id
@@ -275,7 +354,7 @@ async def scan_qr(
                 SELECT id
                 FROM room_allocations
                 WHERE delegate_id = $1
-                AND event_id = $2
+                  AND event_id = $2
                 """,
                 delegate_id,
                 body.event_id
@@ -302,10 +381,12 @@ async def scan_qr(
 
             allocation = await conn.fetchrow(
                 """
-                SELECT id, checkin_time
+                SELECT
+                    id,
+                    checkin_time
                 FROM room_allocations
                 WHERE delegate_id = $1
-                AND event_id = $2
+                  AND event_id = $2
                 """,
                 delegate_id,
                 body.event_id
@@ -336,9 +417,35 @@ async def scan_qr(
                 allocation["id"]
             )
 
+        elif body.scan_type == "kit_collection":
+
+            await conn.execute(
+                """
+                INSERT INTO kit_distribution
+                (
+                    id,
+                    tenant_id,
+                    delegate_id,
+                    event_id,
+                    distributed_by,
+                    distributed_at
+                )
+                VALUES
+                (
+                    $1,$2,$3,$4,$5,NOW()
+                )
+                """,
+                str(uuid.uuid4()),
+                tenant_id,
+                delegate_id,
+                body.event_id,
+                current_user["user_id"]
+            )
+
         elif body.scan_type in (
             "food_breakfast",
             "food_lunch",
+            "food_high_tea",
             "food_dinner"
         ):
 
@@ -375,12 +482,42 @@ async def scan_qr(
     # Success Response
     # ------------------------------------------------------
 
-    return _scan_result(
-        True,
-        "OK",
-        f"Welcome, {delegate['full_name']}!",
-        dict(delegate)
-    )
+        if body.scan_type == "entry":
+            message = f"✅ Check-in successful. Welcome, {delegate['full_name']}!"
+
+        elif body.scan_type == "exit":
+            message = f"👋 Check-out successful. Goodbye, {delegate['full_name']}!"
+
+        elif body.scan_type == "kit_collection":
+            message = f"🎁 Kit distributed to {delegate['full_name']}."
+
+        elif body.scan_type == "food_breakfast":
+            message = f"🍳 Breakfast served to {delegate['full_name']}."
+
+        elif body.scan_type == "food_lunch":
+            message = f"🍽 Lunch served to {delegate['full_name']}."
+
+        elif body.scan_type == "food_high_tea":
+            message = f"☕ High Tea served to {delegate['full_name']}."
+
+        elif body.scan_type == "food_dinner":
+            message = f"🍛 Dinner served to {delegate['full_name']}."
+
+        elif body.scan_type == "accommodation_checkin":
+            message = f"🏨 Accommodation check-in completed for {delegate['full_name']}."
+
+        elif body.scan_type == "accommodation_checkout":
+            message = f"🚪 Accommodation check-out completed for {delegate['full_name']}."
+
+        else:
+            message = f"Scan successful for {delegate['full_name']}."
+
+        return _scan_result(
+            True,
+            "OK",
+            message,
+            dict(delegate)
+        )
 
 
 # ==========================================================
@@ -441,11 +578,11 @@ async def _check_duplicate(
     # ------------------------------------------------------
 
     elif scan_type in (
-        "food_breakfast",
-        "food_lunch",
-        "food_dinner"
-    ):
-
+    "food_breakfast",
+    "food_lunch",
+    "food_high_tea",
+    "food_dinner"
+):
         meal = scan_type.replace(
             "food_",
             ""

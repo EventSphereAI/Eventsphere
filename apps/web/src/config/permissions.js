@@ -8,10 +8,28 @@ export const PERMISSIONS = {
     'super_admin',
   ],
 
+  DASHBOARD: [
+  'super_admin',
+  'organizer',
+  'technical_team',
+  'registration_team',
+  'food_staff',
+  'hospitality_team',
+  'logistics_team',
+  'volunteer_coordinator',
+  'volunteer',
+],
+
   STAFF_MANAGEMENT: [
     'organizer',
     'super_admin',
   ],
+
+  DELEGATES: [
+  'organizer',
+  'registration_team',
+  'super_admin',
+],
 
   EVENTS: [
     'organizer',

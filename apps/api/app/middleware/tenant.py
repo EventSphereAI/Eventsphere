@@ -15,12 +15,6 @@ class TenantMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
 
-        print("\n========== TENANT MIDDLEWARE ==========")
-        print("PATH:", request.url.path)
-        print("METHOD:", request.method)
-        print("HEADERS:", dict(request.headers))
-        print("=======================================\n")
-
         # Allow CORS preflight requests
         if request.method == "OPTIONS":
             return await call_next(request)
@@ -48,7 +42,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
             tenant_slug = "eventsphere-admin"
         else:
             tenant_slug = self._extract_slug(request)
-        print("EXTRACTED TENANT SLUG:", tenant_slug)
+       
 
         if not tenant_slug:
             return JSONResponse(
@@ -72,8 +66,6 @@ class TenantMiddleware(BaseHTTPMiddleware):
             tenant_slug
         )
 
-        print("TENANT FROM DB:", tenant)
-
         if not tenant:
             return JSONResponse(
                 {"error": f"Organization '{tenant_slug}' not found"},
@@ -88,10 +80,6 @@ class TenantMiddleware(BaseHTTPMiddleware):
 
         request.state.tenant_id = str(tenant["id"])
         request.state.tenant = dict(tenant)
-
-        print("TENANT ID SET:", request.state.tenant_id)
-        print("TENANT ID SET:", request.state.tenant_id)
-        print("TENANT NAME:", request.state.tenant["name"])
 
         return await call_next(request)
 

@@ -1,9 +1,15 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
-export default function QRCodeScanner(props) {
+export default function QRCodeScanner({ onScan }) {
+  const onScanRef = useRef(onScan);
+
+  useEffect(() => {
+    onScanRef.current = onScan;
+  }, [onScan]);
+
   useEffect(() => {
     const scanner = new Html5QrcodeScanner(
       'reader',
@@ -16,8 +22,8 @@ export default function QRCodeScanner(props) {
 
     scanner.render(
       (decodedText) => {
-        if (props.onScan) {
-          props.onScan(decodedText);
+        if (onScanRef.current) {
+          onScanRef.current(decodedText);
         }
       },
       () => {}

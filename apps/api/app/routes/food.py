@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
 from pydantic import BaseModel
 from app.database.connection import TenantDB
-from app.auth.jwt import require_any_staff
+from app.auth.jwt import require_food
 from datetime import date
 import uuid
 
@@ -16,7 +16,7 @@ class FoodScanRequest(BaseModel):
 async def record_food(
     body: FoodScanRequest,
     request: Request,
-    current_user: dict = Depends(require_any_staff)
+    current_user: dict = Depends(require_food)
 ):
     """Record food distribution for a delegate"""
     tenant_id = request.state.tenant_id
@@ -51,7 +51,7 @@ async def record_food(
 async def food_stats(
     event_id: str,
     request: Request,
-    current_user: dict = Depends(require_any_staff)
+    current_user: dict = Depends(require_food)
 ):
     """Get food consumption stats for an event"""
     tenant_id = request.state.tenant_id

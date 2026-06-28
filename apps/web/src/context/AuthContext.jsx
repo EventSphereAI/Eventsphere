@@ -38,7 +38,15 @@ try {
   const { data } = await api.get("/api/auth/me");
 
   setUser(data);
+
+// Restore tenant from localStorage
+  const savedTenant = localStorage.getItem("tenant");
+
+if (savedTenant) {
+  setTenant(JSON.parse(savedTenant));
+}
   setError(null);
+  
 } catch (err) {
   console.error("Failed to fetch user:", err);
 
@@ -170,17 +178,18 @@ orgSlug
   const role = data.user?.role;
 
   const roleRoutes = {
-    super_admin: "/super-admin",
-    organizer: "/dashboard",
-    registration_team: "/delegates",
-    technical_team: "/scan",
-    food_staff: "/scan/food",
-    hospitality_team: "/accommodation",
-    logistics_team: "/dashboard",
-    volunteer_coordinator:
-      "/dashboard",
-    volunteer: "/dashboard",
-  };
+  super_admin: "/super-admin",
+  organizer: "/dashboard",
+
+  technical_team: "/attendance",
+  registration_team: "/registration",
+  food_staff: "/food",
+  hospitality_team: "/accommodation",
+
+  logistics_team: "/dashboard",
+  volunteer_coordinator: "/dashboard",
+  volunteer: "/dashboard",
+};
 
   router.push(
     roleRoutes[role] || "/dashboard"

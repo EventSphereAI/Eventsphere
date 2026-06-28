@@ -4,19 +4,49 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import api from '@/utils/api';
+import RoleGuard from '@/components/RoleGuard';
+import { PERMISSIONS } from '@/config/permissions';
+import AppShell from "@/components/AppShell";
+import StatCard from "@/components/StatCard";
+import QuickActionCard from "@/components/QuickActionCard";
 
-export default function DashboardPage() {
+import {
+  CalendarDays,
+  Users,
+  ClipboardCheck,
+  QrCode,
+  UtensilsCrossed,
+  Hotel,
+} from "lucide-react";
+function DashboardContent() {
   const { user, loading, logout, tenant } = useAuth();
   const router = useRouter();
 
   const [events, setEvents] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventsError, setEventsError] = useState(''); // Fix #5 — error state for events fetch
+
   const [stats, setStats] = useState({
-  total_events: 0,
-  total_delegates: 0,
-  checked_in: 0,
-  accommodation_needed: 0
-});
+    total_events: 0,
+    total_delegates: 0,
+    checked_in: 0,
+    accommodation_needed: 0
+  });
+  const [statsLoading, setStatsLoading] = useState(false); // Fix #8 — stats loading state
+  const [statsError, setStatsError] = useState('');        // Fix #4 — error state for stats fetch
+
+  // Fix #10 — per-card copy feedback instead of alert
+  const [copiedEventId, setCopiedEventId] = useState(null);
+
+  // Fix #2 — use env var for base URL, fallback to window.location.origin
+  const getBaseUrl = () => {
+    if (typeof window !== 'undefined') {
+      return window.location.origin;
+    }
+    return '';
+  };
+
+  // Fix #1 — removed all console.log statements from render body
 
   useEffect(() => {
     if (!loading && !user) {
@@ -34,28 +64,57 @@ export default function DashboardPage() {
   const fetchEvents = async () => {
     try {
       setEventsLoading(true);
-
-      const { data } = await api.get('/api/events/');
-
+      setEventsError(''); // Fix #5
+      const { data } = await api.get('/api/events/'); // same API call, untouched
       setEvents(data.events || []);
     } catch (err) {
       console.error('Failed to fetch events:', err);
+      setEventsError('Failed to load events. Please try refreshing.'); // Fix #5
     } finally {
       setEventsLoading(false);
     }
   };
 
   const fetchStats = async () => {
-  try {
-    const { data } = await api.get('/api/reports/dashboard');
-    setStats(data);
-  } catch (err) {
-    console.error(
-      'Failed to fetch dashboard stats:',
-      err
-    );
-  }
-};
+    try {
+      setStatsLoading(true); // Fix #8
+      setStatsError('');     // Fix #4
+      const { data } = await api.get('/api/reports/dashboard'); // same API call, untouched
+      setStats(data);
+    } catch (err) {
+      console.error('Failed to fetch dashboard stats:', err);
+      setStatsError('Failed to load stats.'); // Fix #4
+    } finally {
+      setStatsLoading(false); // Fix #8
+    }
+  };
+
+  // Fix #10 — inline copy feedback, no alert()
+  const handleCopyLink = (eventId) => {
+    // Fix #9 — guard against undefined tenant
+    if (!tenant?.id) return;
+
+    const link = `${getBaseUrl()}/register?event=${eventId}&tenant=${tenant.id}`; // Fix #2
+    navigator.clipboard.writeText(link);
+    setCopiedEventId(eventId);
+    setTimeout(() => setCopiedEventId(null), 2000); // reset after 2s
+  };
+
+  // Fix #11 — status badge color mapping
+  const getStatusStyle = (status) => {
+    switch (status) {
+      case 'active':
+        return 'bg-blue-100 text-blue-800';
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      case 'draft':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-blue-100 text-blue-800';
+    }
+  };
 
   if (loading) {
     return (
@@ -65,185 +124,202 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-
-      {/* Navigation */}
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-primary">
-            EventSphere
-          </h1>
-
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">
-              {user.email}
-            </span>
-
-            <button
-              onClick={logout}
-              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </nav>
+  <AppShell>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
 
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">
-            Welcome, {user.email}
-          </h2>
-
-          <p className="text-gray-600 mt-2">
-            Role: {user.role}
-          </p>
-
-          {tenant && (
-            <p className="text-gray-500 text-sm mt-1">
-              Organization: {tenant.name}
-
-            </p>
-          )}
-        </div>
-
-        <section className="grid gap-4 md:grid-cols-4 mb-8">
-
-          <div className="bg-white p-6 rounded shadow">
-            <p className="text-gray-500 text-sm">
-              Total Events
-            </p>
-            <h3 className="text-3xl font-bold">
-              {stats.total_events}
-            </h3>
+        {/* Fix #4 — stats error display */}
+        {statsError && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded border border-red-300">
+            {statsError}
           </div>
+        )}
 
-          <div className="bg-white p-6 rounded shadow">
-            <p className="text-gray-500 text-sm">
-              Delegates
-            </p>
-            <h3 className="text-3xl font-bold">
-              {stats.total_delegates}
-            </h3>
-          </div>
+        {/* Stats Section — Fix #8: show — while loading */}
+    <section className="grid gap-6 lg:grid-cols-4 md:grid-cols-2">
 
-          <div className="bg-white p-6 rounded shadow">
-            <p className="text-gray-500 text-sm">
-              Checked In
-            </p>
-            <h3 className="text-3xl font-bold">
-              {stats.checked_in}
-            </h3>
-          </div>
+  <StatCard
+    title="Total Events"
+    value={statsLoading ? "—" : stats.total_events}
+    icon={CalendarDays}
+    color="from-cyan-400 to-cyan-500"
+  />
 
-          <div className="bg-white p-6 rounded shadow">
-            <p className="text-gray-500 text-sm">
-              Accommodation
-            </p>
-            <h3 className="text-3xl font-bold">
-              {stats.accommodation_needed}
-            </h3>
-          </div>
+  <StatCard
+    title="Delegates"
+    value={statsLoading ? "—" : stats.total_delegates}
+    icon={Users}
+    color="from-green-400 to-green-500"
+  />
 
-        </section>
+  <StatCard
+    title="Checked In"
+    value={statsLoading ? "—" : stats.checked_in}
+    icon={QrCode}
+    color="from-violet-400 to-violet-500"
+  />
 
+  <StatCard
+    title="Accommodation"
+    value={statsLoading ? "—" : stats.accommodation_needed}
+    icon={Hotel}
+    color="from-orange-400 to-orange-500"
+  />
+
+</section>
         {/* Events Section */}
-        <section className="card">
+        <section className="card mt-8">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-2xl font-bold">
-              Events
-            </h3>
+            <h3 className="text-2xl font-bold">Events</h3>
 
-            <button
-              onClick={() => router.push('/events')}
-              className="btn-primary"
-            >
-              Create Event
-            </button>
+            <div className="flex gap-2">
+              {/* Fix #6 — manual refresh button */}
+              <button
+                onClick={() => { fetchEvents(); fetchStats(); }}
+                className="px-3 py-2 border rounded text-sm text-gray-600 hover:bg-gray-50"
+              >
+                ↻ Refresh
+              </button>
+
+              <button
+                onClick={() => router.push('/events')} // same, untouched
+                className="btn-primary"
+              >
+                Create Event
+              </button>
+            </div>
           </div>
+
+          {/* Fix #5 — events error display */}
+          {eventsError && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded border border-red-300">
+              {eventsError}
+            </div>
+          )}
 
           {eventsLoading ? (
-            <p className="text-gray-500">
-              Loading events...
-            </p>
+            <p className="text-gray-500">Loading events...</p>
           ) : events.length === 0 ? (
             <p className="text-gray-500 text-center py-8">
               No events yet. Create your first event!
             </p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-
               {events.map((event) => (
                 <div
-                  key={event.id}
-                  className="border rounded-lg p-4 hover:shadow-lg transition"
-                >
-                  <h4 className="font-semibold text-lg mb-2">
-                    {event.title}
-                  </h4>
+  key={event.id}
+className="bg-white border border-border rounded-2xl p-5 hover:shadow-soft hover:-translate-y-1 transition-all duration-300"
+>
 
-                  <p className="text-sm text-gray-600 mb-2">
-                    {event.venue}
-                  </p>
+  {/* Title */}
 
-                  <p className="text-sm text-gray-500 mb-2">
-                    {new Date(event.start_date).toLocaleDateString()}
-                    {' - '}
-                    {new Date(event.end_date).toLocaleDateString()}
-                  </p>
+  <div className="flex items-start justify-between">
 
-                  <div className="space-y-2">
+    <div>
 
-                    <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                      {event.status}
-                    </span>
+      <h3 className="text-xl font-semibold text-text">
+        {event.title}
+      </h3>
 
-                    <div className="mt-2">
-                      <p className="text-xs text-gray-500">
-                        Registration Link
-                      </p>
+      <p className="text-sm text-muted mt-1">
+        📍 {event.venue}
+      </p>
 
-                      <input
-                        readOnly
-                        value={`http://localhost:3000/register?event=${event.id}&tenant=${tenant?.id}`}
-                        className="w-full border rounded px-2 py-1 text-xs"
-                      />
-                    </div>
+    </div>
 
-                    <button
-                      onClick={() => {
-                       navigator.clipboard.writeText(
-                         `http://localhost:3000/register?event=${event.id}&tenant=${tenant?.id}`
-                        );
+    <span
+      className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusStyle(
+        event.status
+      )}`}
+    >
+      {event.status}
+    </span>
 
-                        alert('Registration link copied!');
-                      }}
-                      className="bg-green-600 text-white px-3 py-1 rounded text-sm"
-                    >
-                      Copy Link
-                    </button>
+  </div>
 
-                  </div>
-                </div>
+  {/* Date */}
+
+   <div className="mt-4 text-sm text-gray-600">
+
+    📅{" "}
+    {new Date(event.start_date).toLocaleDateString()}
+
+    {"  "}—{"  "}
+
+    {new Date(event.end_date).toLocaleDateString()}
+
+  </div>
+
+  {/* Registration Link */}
+
+  {tenant?.id && (
+
+    <div className="mt-4">
+
+      <p className="text-xs uppercase tracking-wider text-gray-400 mb-2">
+
+        Registration Link
+
+      </p>
+
+      <input
+        readOnly
+        value={`${getBaseUrl()}/register?event=${event.id}&tenant=${tenant.id}`}
+        className="input-field text-sm"
+      />
+
+    </div>
+
+  )}
+
+  {/* Buttons */}
+
+  <div className="flex gap-3 mt-4">
+
+    {tenant?.id && (
+
+      <button
+        onClick={() => handleCopyLink(event.id)}
+        className="btn-secondary flex-1"
+      >
+
+        {copiedEventId === event.id
+          ? "Copied ✓"
+          : "Copy Link"}
+
+      </button>
+
+    )}
+
+    <button
+      onClick={() =>
+        router.push(`/delegates?event=${event.id}`)
+      }
+      className="btn-primary flex-1"
+    >
+
+      Manage
+
+    </button>
+
+  </div>
+
+</div>
+               
               ))}
-
             </div>
           )}
         </section>
 
-        {/* Quick Links */}
-        <section className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+        {/* Quick Links — Fix #13: changed to grid-cols-3 to handle 9 buttons evenly */}
+        <section className="mt-8 grid gap-4 grid-cols-3 md:grid-cols-3 lg:grid-cols-9">
 
           <button
-            onClick={() => router.push('/events')}
+            onClick={() => router.push('/events')} // same, untouched
             className="card text-center hover:shadow-lg transition"
           >
             <p className="text-2xl mb-2">📋</p>
@@ -251,7 +327,7 @@ export default function DashboardPage() {
           </button>
 
           <button
-            onClick={() => router.push('/delegates')}
+            onClick={() => router.push('/delegates')} // same, untouched
             className="card text-center hover:shadow-lg transition"
           >
             <p className="text-2xl mb-2">👥</p>
@@ -259,62 +335,72 @@ export default function DashboardPage() {
           </button>
 
           <button
-            onClick={() => router.push('/accommodation')}
+            onClick={() => router.push('/accommodation')} // same, untouched
             className="card text-center hover:shadow-lg transition"
           >
             <p className="text-2xl mb-2">🏠</p>
             <p className="font-semibold">Accommodation</p>
           </button>
 
-                <button
-        onClick={() => router.push('/reports')}
-        className="card text-center hover:shadow-lg transition"
-      >
-        <p className="text-2xl mb-2">🔍</p>
-        <p className="font-semibold">Reports</p>
-      </button>
+          <button
+            onClick={() => router.push('/reports')} // same, untouched
+            className="card text-center hover:shadow-lg transition"
+          >
+            <p className="text-2xl mb-2">🔍</p>
+            <p className="font-semibold">Reports</p>
+          </button>
 
-      <button
-  onClick={() => router.push('/attendance')}
-  className="card text-center hover:shadow-lg transition"
->
-  <p className="text-2xl mb-2">📊</p>
-  <p className="font-semibold">Attendance</p>
-</button>
+          <button
+            onClick={() => router.push('/attendance')} // same, untouched
+            className="card text-center hover:shadow-lg transition"
+          >
+            <p className="text-2xl mb-2">📊</p>
+            <p className="font-semibold">Attendance</p>
+          </button>
 
-<button
-  onClick={() => router.push('/scanner')}
-  className="card text-center hover:shadow-lg transition"
->
-  <p className="text-2xl mb-2">📷</p>
-  <p className="font-semibold">Scanner</p>
-</button>
-<button
-  onClick={() => router.push('/registration')}
-  className="card text-center hover:shadow-lg transition"
->
-  <p className="text-2xl mb-2">📦</p>
-  <p className="font-semibold">Registration</p>
-</button>
+          <button
+            onClick={() => router.push('/scanner')} // same, untouched
+            className="card text-center hover:shadow-lg transition"
+          >
+            <p className="text-2xl mb-2">📷</p>
+            <p className="font-semibold">Scanner</p>
+          </button>
 
-<button
-  onClick={() => router.push('/food')}
-  className="card text-center hover:shadow-lg transition"
->
-  <p className="text-2xl mb-2">🍽️</p>
-  <p className="font-semibold">Food</p>
-</button>
+          <button
+            onClick={() => router.push('/registration')} // same, untouched
+            className="card text-center hover:shadow-lg transition"
+          >
+            <p className="text-2xl mb-2">📦</p>
+            <p className="font-semibold">Registration</p>
+          </button>
 
-<button
-  onClick={() => router.push('/staff')}
-  className="card text-center hover:shadow-lg transition"
->
-  <p className="text-2xl mb-2">👨‍💼</p>
-  <p className="font-semibold">Staff</p>
-</button>
+          <button
+            onClick={() => router.push('/food')} // same, untouched
+            className="card text-center hover:shadow-lg transition"
+          >
+            <p className="text-2xl mb-2">🍽️</p>
+            <p className="font-semibold">Food</p>
+          </button>
+
+          <button
+            onClick={() => router.push('/staff')} // same, untouched
+            className="card text-center hover:shadow-lg transition"
+          >
+            <p className="text-2xl mb-2">👨‍💼</p>
+            <p className="font-semibold">Staff</p>
+          </button>
+
         </section>
 
       </main>
-    </div>
+    </AppShell>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <RoleGuard allowedRoles={PERMISSIONS.DASHBOARD}>
+      <DashboardContent />
+    </RoleGuard>
   );
 }

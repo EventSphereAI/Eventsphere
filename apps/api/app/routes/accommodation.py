@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
 from pydantic import BaseModel
 from app.database.connection import TenantDB
-from app.auth.jwt import require_any_staff
+from app.auth.jwt import require_accommodation
 import uuid
 
 router = APIRouter()
@@ -22,7 +22,7 @@ class RoomAllocation(BaseModel):
 async def create_room(
     body: RoomCreate,
     request: Request,
-    current_user: dict = Depends(require_any_staff)
+    current_user: dict = Depends(require_accommodation)
 ):
     """Create a room"""
     tenant_id = request.state.tenant_id
@@ -41,7 +41,7 @@ async def create_room(
 async def list_rooms(
     event_id: str,
     request: Request,
-    current_user: dict = Depends(require_any_staff)
+    current_user: dict = Depends(require_accommodation)
 ):
     """List all rooms for an event"""
     tenant_id = request.state.tenant_id
@@ -76,7 +76,7 @@ async def list_rooms(
 async def list_allocations(
     event_id: str,
     request: Request,
-    current_user: dict = Depends(require_any_staff)
+    current_user: dict = Depends(require_accommodation)
 ):
     tenant_id = request.state.tenant_id
 
@@ -104,11 +104,82 @@ async def list_allocations(
         "allocations": [dict(a) for a in allocations]
     }
 
+@router.get("/stats/{event_id}")
+async def accommodation_stats(
+    event_id: str,
+    request: Request,
+    current_user: dict = Depends(require_accommodation)
+):
+    tenant_id = request.state.tenant_id
+
+    async with TenantDB(tenant_id) as conn:
+
+        total_rooms = await conn.fetchval(
+            """
+            SELECT COUNT(*)
+            FROM rooms
+            WHERE event_id = $1
+            """,
+            event_id
+        )
+
+        occupied_rooms = await conn.fetchval(
+            """
+            SELECT COUNT(DISTINCT room_id)
+            FROM room_allocations
+            WHERE event_id = $1
+            """,
+            event_id
+        )
+
+        available_beds = await conn.fetchval(
+            """
+            SELECT
+                COALESCE(SUM(r.capacity),0)
+                -
+                COALESCE(COUNT(ra.id),0)
+            FROM rooms r
+            LEFT JOIN room_allocations ra
+                ON r.id = ra.room_id
+            WHERE r.event_id = $1
+            """,
+            event_id
+        )
+
+        checked_in = await conn.fetchval(
+            """
+            SELECT COUNT(*)
+            FROM room_allocations
+            WHERE event_id = $1
+            AND checkin_time IS NOT NULL
+            AND checkout_time IS NULL
+            """,
+            event_id
+        )
+
+        checked_out = await conn.fetchval(
+            """
+            SELECT COUNT(*)
+            FROM room_allocations
+            WHERE event_id = $1
+            AND checkout_time IS NOT NULL
+            """,
+            event_id
+        )
+
+    return {
+        "total_rooms": total_rooms,
+        "occupied_rooms": occupied_rooms,
+        "available_beds": available_beds,
+        "checked_in": checked_in,
+        "checked_out": checked_out
+    }
+
 @router.post("/allocate", status_code=201)
 async def allocate_delegate_to_room(
     body: RoomAllocation,
     request: Request,
-    current_user: dict = Depends(require_any_staff)
+    current_user: dict = Depends(require_accommodation)
 ):
     """Allocate a delegate to a room"""
     tenant_id = request.state.tenant_id
@@ -146,7 +217,7 @@ async def allocate_delegate_to_room(
 async def checkin_to_room(
     allocation_id: str,
     request: Request,
-    current_user: dict = Depends(require_any_staff)
+    current_user: dict = Depends(require_accommodation)
 ):
     """Check in delegate to room"""
     tenant_id = request.state.tenant_id
@@ -164,7 +235,7 @@ async def checkin_to_room(
 async def checkout_from_room(
         allocation_id: str,
         request: Request,
-        current_user: dict = Depends(require_any_staff)
+        current_user: dict = Depends(require_accommodation)
     ):
         tenant_id = request.state.tenant_id
 

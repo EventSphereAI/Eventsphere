@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, field_validator
 from app.database.connection import TenantDB
-from app.auth.jwt import get_current_user
+from app.auth.jwt import require_registration
 from app.routes.scanning import generate_qr_token
 from app.services.email_service import send_registration_email
 
@@ -64,7 +64,7 @@ class DelegateUpdate(BaseModel):
 async def create_delegate(
     body: DelegateCreate,
     request: Request,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_registration)
 ):
     tenant_id = request.state.tenant_id
     delegate_id = str(uuid.uuid4())
@@ -160,7 +160,7 @@ async def create_delegate(
 async def list_delegates(
     event_id: str,
     request: Request,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_registration)
 ):
     tenant_id = request.state.tenant_id
 
@@ -205,7 +205,7 @@ async def list_delegates(
 async def get_delegate(
     delegate_id: str,
     request: Request,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_registration)
 ):
     tenant_id = request.state.tenant_id
 
@@ -240,7 +240,7 @@ async def update_delegate(
     delegate_id: str,
     body: DelegateUpdate,
     request: Request,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_registration)
 ):
     tenant_id = request.state.tenant_id
 
@@ -301,7 +301,7 @@ async def update_delegate(
 async def get_qr_pass(
     delegate_id: str,
     request: Request,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_registration)
 ):
     tenant_id = request.state.tenant_id
 

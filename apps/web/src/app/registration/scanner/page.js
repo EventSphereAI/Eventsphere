@@ -1,139 +1,189 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import QRCodeScanner from '@/components/QRCodeScanner';
+import api from '@/utils/api';
+import RoleGuard from '@/components/RoleGuard';
+import { PERMISSIONS } from '@/config/permissions';
 
-export default function RegistrationScannerPage() {
+function RegistrationScannerContent() {
   const [scanResult, setScanResult] = useState(null);
   const [processing, setProcessing] = useState(false);
-  const [lastScanned, setLastScanned] = useState('');
+
+  const [selectedEvent, setSelectedEvent] = useState('');
+  const [eventName, setEventName] = useState('');
+
+  useEffect(() => {
+    loadEvent();
+  }, []);
+
+  const loadEvent = async () => {
+    try {
+      const savedEvent = localStorage.getItem(
+        'registrationSelectedEvent'
+      );
+
+      const { data } = await api.get('/api/events/');
+
+      const events = data.events || [];
+
+      if (
+        savedEvent &&
+        events.some((e) => e.id === savedEvent)
+      ) {
+        setSelectedEvent(savedEvent);
+
+        const event = events.find(
+          (e) => e.id === savedEvent
+        );
+
+        if (event) {
+          setEventName(event.title);
+        }
+      } else if (events.length > 0) {
+        setSelectedEvent(events[0].id);
+        setEventName(events[0].title);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handleScan = async (qrData) => {
-
     if (processing) return;
 
-    if (lastScanned === qrData) return;
+    if (!selectedEvent) {
+      alert('No event selected.');
+      return;
+    }
 
     setProcessing(true);
-    setLastScanned(qrData);
 
     try {
+      const response = await api.post('/api/scan/', {
+        qr_token: qrData,
+        event_id: selectedEvent,
+        scan_type: 'kit_collection',
+      });
 
-      // API call will come here later
+      console.log(response.data);
 
-      const delegate = {
-        name: 'Swayam Panchal',
-        college: 'Pimpri Chinchwad University',
-        email: 'swayam@gmail.com',
-        phone: '9876543210',
-        food: 'Non-Veg',
-        accommodation: 'Yes',
-        qr: qrData,
-        kitDistributed: false,
-      };
+      if (!response.data.success) {
+        setScanResult({
+          error: true,
+          message: response.data.message,
+        });
+      } else {
+        const delegate = response.data.delegate;
 
-      setScanResult(delegate);
-
-      setTimeout(() => {
-        setProcessing(false);
-
-        setTimeout(() => {
-          setLastScanned('');
-        }, 5000);
-      }, 2000);
-
+        setScanResult({
+          name: delegate.full_name,
+          college: delegate.college,
+          email: delegate.email,
+          phone: delegate.phone,
+          food: delegate.food_pref,
+          accommodation:
+            delegate.accommodation_required
+              ? 'Yes'
+              : 'No',
+          qr: qrData,
+          status: response.data.message,
+        });
+      }
     } catch (error) {
-
       console.error(error);
 
       setScanResult({
         error: true,
-        message: 'Invalid QR Code',
+        message:
+          error?.response?.data?.detail ||
+          error?.response?.data?.message ||
+          'Scan failed',
       });
-
-      setTimeout(() => {
-        setScanResult(null);
-        setProcessing(false);
-      }, 2000);
     }
-  };
-
-  const markKitDistributed = () => {
-
-    setScanResult(prev => ({
-      ...prev,
-      kitDistributed: true,
-    }));
 
     setTimeout(() => {
       setScanResult(null);
-    }, 2000);
+      setProcessing(false);
+    }, 2500);
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 md:p-6">
+    <div className="min-h-screen bg-slate-100 p-6">
 
-      {/* Header */}
       <div className="mb-8">
-
-        <h1 className="text-3xl md:text-4xl font-bold text-slate-900">
+        <h1 className="text-4xl font-bold text-slate-900">
           Kit Distribution Scanner
         </h1>
 
         <p className="text-slate-600 mt-2">
           Scan delegate QR codes and distribute kits.
         </p>
+      </div>
+
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 mb-6">
+
+        <div className="grid md:grid-cols-2 gap-6">
+
+          <div>
+
+            <label className="block text-sm font-medium mb-2">
+              Current Event
+            </label>
+
+            <div className="border rounded-lg p-3 bg-gray-100 font-medium">
+              {eventName}
+            </div>
+
+          </div>
+
+          <div>
+
+            <label className="block text-sm font-medium mb-2">
+              Distribution Status
+            </label>
+
+            <div className="border rounded-lg p-3 bg-green-50 text-green-700 font-medium">
+              Ready to Scan
+            </div>
+
+          </div>
+
+        </div>
 
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
 
-        {/* Scanner */}
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-4 md:p-6">
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
 
-          <h2 className="text-xl md:text-2xl font-semibold mb-4">
+          <h2 className="text-2xl font-semibold mb-4">
             Live QR Scanner
           </h2>
 
-          <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 min-h-[400px] md:min-h-[500px]">
+          <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 min-h-[500px]">
 
             <QRCodeScanner onScan={handleScan} />
 
           </div>
 
-          {processing && (
-            <div className="mt-4 text-center">
-
-              <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-xl">
-
-                <span>⏳</span>
-                <span>Processing Scan...</span>
-
-              </div>
-
-            </div>
-          )}
-
         </div>
 
-        {/* Details */}
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-4 md:p-6">
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
 
-          <h2 className="text-xl md:text-2xl font-semibold mb-6">
+          <h2 className="text-2xl font-semibold mb-6">
             Delegate Details
           </h2>
 
           {!scanResult ? (
 
-            <div className="h-[400px] md:h-[500px] flex items-center justify-center text-slate-400 text-lg">
-
+            <div className="h-[500px] flex items-center justify-center text-slate-400 text-lg">
               Waiting for QR Scan...
-
             </div>
 
           ) : scanResult.error ? (
 
-            <div className="h-[400px] md:h-[500px] flex items-center justify-center">
+            <div className="h-[500px] flex items-center justify-center">
 
               <div className="bg-red-100 border border-red-200 rounded-2xl p-8 text-center">
 
@@ -142,8 +192,12 @@ export default function RegistrationScannerPage() {
                 </div>
 
                 <h3 className="text-2xl font-bold text-red-700">
-                  Invalid QR
+                  Scan Failed
                 </h3>
+
+                <p className="mt-3 text-red-600">
+                  {scanResult.message}
+                </p>
 
               </div>
 
@@ -168,7 +222,7 @@ export default function RegistrationScannerPage() {
                   College
                 </p>
 
-                <p className="font-medium">
+                <p>
                   {scanResult.college}
                 </p>
               </div>
@@ -189,7 +243,7 @@ export default function RegistrationScannerPage() {
                 </p>
 
                 <p>
-                  {scanResult.phone}
+                  {scanResult.phone || '-'}
                 </p>
               </div>
 
@@ -214,37 +268,19 @@ export default function RegistrationScannerPage() {
               </div>
 
               <div>
+
                 <p className="text-sm text-slate-500">
                   Kit Status
                 </p>
 
-                {scanResult.kitDistributed ? (
+                <span className="inline-flex px-4 py-2 rounded-full bg-green-100 text-green-700 font-medium">
+                  ✓ {scanResult.status}
+                </span>
 
-                  <span className="inline-flex px-4 py-2 rounded-full bg-green-100 text-green-700 font-medium">
-                    ✓ Kit Distributed
-                  </span>
-
-                ) : (
-
-                  <span className="inline-flex px-4 py-2 rounded-full bg-yellow-100 text-yellow-700 font-medium">
-                    Pending Distribution
-                  </span>
-
-                )}
               </div>
 
-              {!scanResult.kitDistributed && (
-
-                <button
-                  onClick={markKitDistributed}
-                  className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 transition"
-                >
-                  Mark Kit Distributed
-                </button>
-
-              )}
-
               <div>
+
                 <p className="text-sm text-slate-500">
                   QR Data
                 </p>
@@ -252,6 +288,7 @@ export default function RegistrationScannerPage() {
                 <div className="bg-slate-100 rounded-xl p-3 text-sm break-all">
                   {scanResult.qr}
                 </div>
+
               </div>
 
             </div>
@@ -263,5 +300,13 @@ export default function RegistrationScannerPage() {
       </div>
 
     </div>
+  );
+}
+
+export default function RegistrationScannerPage() {
+  return (
+    <RoleGuard allowedRoles={PERMISSIONS.REGISTRATION}>
+      <RegistrationScannerContent />
+    </RoleGuard>
   );
 }

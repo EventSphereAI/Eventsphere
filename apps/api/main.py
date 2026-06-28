@@ -10,7 +10,9 @@ from app.routes import auth, tenants, events, delegates, scanning, food, accommo
 from app.middleware.tenant import TenantMiddleware
 from app.routes import super_admin
 from app.routes import staff
-from app.routes import test_email
+from app.routes import bulk_import
+from app.routes import bulk_email
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -56,9 +58,11 @@ app.include_router(food.router,          prefix="/api/food",          tags=["Foo
 app.include_router(accommodation.router, prefix="/api/accommodation", tags=["Accommodation"])
 app.include_router(reports.router,       prefix="/api/reports",       tags=["Reports"])
 app.include_router(public.router,        prefix="/api/public",        tags=["Public"])
-app.include_router(test_email.router,    prefix="/api/test",          tags=["Testing"])
 app.include_router(super_admin.router,   prefix="/api/super_admin",   tags=["Super Admin"])
 app.include_router(staff.router,         prefix="/api/staff",         tags=["Staff"])
+app.include_router(bulk_import.router,   prefix="/api/bulk",          tags=["Bulk Import"])
+app.include_router(bulk_email.router,    prefix="/api/bulk",          tags=["Bulk Email"])
+
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "service": "EventSphere API v1.0.0"}

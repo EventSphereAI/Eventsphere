@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
 from pydantic import BaseModel
 from app.database.connection import get_pool, TenantDB
-from app.auth.jwt import get_current_user
+from app.auth.jwt import (get_current_user,require_admin)
 
 router = APIRouter()
 
@@ -26,7 +26,7 @@ async def update_tenant(
     tenant_id: str,
     body: TenantUpdate,
     request: Request,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_admin)
 ):
     """Update tenant info (admin only)"""
     # Verify ownership
@@ -62,7 +62,7 @@ async def update_tenant(
 async def list_tenant_users(
     tenant_id: str,
     request: Request,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_admin)
 ):
     """List all users in organization"""
     if request.state.tenant_id != tenant_id:

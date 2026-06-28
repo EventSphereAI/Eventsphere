@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
 from pydantic import BaseModel
 from app.database.connection import TenantDB
-from app.auth.jwt import get_current_user
+from app.auth.jwt import require_admin
 from datetime import date
 import uuid
 
@@ -26,7 +26,7 @@ class EventUpdate(BaseModel):
 async def create_event(
     body: EventCreate,
     request: Request,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_admin)
 ):
     """Create a new event"""
 
@@ -68,13 +68,10 @@ async def create_event(
 @router.get("/")
 async def list_events(
     request: Request,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_admin)
 ):
 
-    print("========== EVENTS ==========")
-    print("TENANT ID:", request.state.tenant_id)
-    print("USER:", current_user)
-    print("============================")
+
 
     tenant_id = request.state.tenant_id
 
@@ -84,8 +81,6 @@ async def list_events(
             SELECT COUNT(*)
             FROM events
         """)
-
-        print("EVENT COUNT:", count)
 
         events = await conn.fetch("""
             SELECT
@@ -187,7 +182,7 @@ async def list_events(
 async def get_event(
     event_id: str,
     request: Request,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_admin)
 ):
     """Get event details"""
 
@@ -220,7 +215,7 @@ async def update_event(
     event_id: str,
     body: EventUpdate,
     request: Request,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_admin)
 ):
     """Update event"""
 

@@ -3,56 +3,102 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/utils/api';
+import { useAuth } from '@/context/AuthContext'; // Fix #15 — auth guard
 import RoleGuard from '@/components/RoleGuard';
 import { PERMISSIONS } from '@/config/permissions';
 
+// Fix #12 — role options defined once, reused in both places
+const ROLE_OPTIONS = [
+  { value: 'registration_team', label: 'Registration Team' },
+  { value: 'technical_team', label: 'Technical Team' },
+  { value: 'food_staff', label: 'Food Staff' },
+  { value: 'hospitality_team', label: 'Hospitality Team' },
+  { value: 'logistics_team', label: 'Logistics Team' },
+  { value: 'volunteer_coordinator', label: 'Volunteer Coordinator' },
+  { value: 'volunteer', label: 'Volunteer' },
+];
+
 export default function StaffPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth(); // Fix #15 & #16 — auth + renamed to avoid clash
 
   const [staff, setStaff] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [staffLoading, setStaffLoading] = useState(true); // Fix #16 — renamed from 'loading'
 
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
 
+  // Create staff form
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // Fix #7
   const [role, setRole] = useState('registration_team');
+  const [createLoading, setCreateLoading] = useState(false); // Fix #6
+  const [createError, setCreateError] = useState('');        // Fix #1 & #18
+  const [createSuccess, setCreateSuccess] = useState('');    // Fix #1
+
+  // Fix #2 & #17 — inline password reset state instead of prompt()
+  const [resetStaffId, setResetStaffId] = useState(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState('');
+
+  // Global error state
+  const [loadError, setLoadError] = useState('');   // Fix #5 & #18
+  const [actionError, setActionError] = useState(''); // Fix #1 & #18
+
+  // Fix #15 — auth redirect
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
 
   useEffect(() => {
-    loadStaff();
-  }, []);
+    if (!authLoading && user) {
+      loadStaff();
+    }
+  }, [authLoading, user]);
 
   const loadStaff = async () => {
     try {
-      setLoading(true);
-
-      const { data } = await api.get('/api/staff');
-
-      setStaff(data);
+      setStaffLoading(true);
+      setLoadError('');
+      const { data } = await api.get('/api/staff'); // untouched
+      setStaff(data || []); // Fix #14 — || [] fallback
     } catch (err) {
       console.error(err);
-      alert('Failed to load staff');
+      setLoadError('Failed to load staff. Please refresh.'); // Fix #5 — no alert()
     } finally {
-      setLoading(false);
+      setStaffLoading(false);
     }
   };
 
   const createStaff = async () => {
-    if (
-      !fullName ||
-      !email ||
-      !password ||
-      !role
-    ) {
-      return alert('Please fill all fields');
+    setCreateError('');
+    setCreateSuccess('');
+
+    // Fix #3 — trim and validate before submit
+    const trimmedName = fullName.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedName || !trimmedEmail || !password || !role) {
+      setCreateError('Please fill all fields.'); // Fix #1 — no alert()
+      return;
+    }
+
+    if (password.length < 8) {
+      setCreateError('Password must be at least 8 characters.');
+      return;
     }
 
     try {
-      await api.post('/api/staff', {
-        full_name: fullName,
-        email,
+      setCreateLoading(true); // Fix #6
+      await api.post('/api/staff', { // untouched
+        full_name: trimmedName,
+        email: trimmedEmail,
         password,
         role,
       });
@@ -61,96 +107,87 @@ export default function StaffPage() {
       setEmail('');
       setPassword('');
       setRole('registration_team');
-
+      setCreateSuccess('Staff member created successfully.'); // Fix #1 — no alert()
       await loadStaff();
-
-      alert('Staff created successfully');
     } catch (err) {
       console.error(err);
-
-      alert(
-        err.response?.data?.detail ||
-          'Failed to create staff'
+      setCreateError(
+        err.response?.data?.detail || 'Failed to create staff.' // Fix #1 — no alert()
       );
+    } finally {
+      setCreateLoading(false); // Fix #6
     }
   };
 
   const disableStaff = async (staffId) => {
+    // Fix #4 — confirmation before disable
+    if (!window.confirm('Are you sure you want to disable this staff member?')) return;
     try {
-      await api.patch(
-        `/api/staff/${staffId}/disable`
-      );
-
+      setActionError('');
+      await api.patch(`/api/staff/${staffId}/disable`); // untouched
       await loadStaff();
     } catch (err) {
       console.error(err);
-
-      alert('Failed to disable staff');
+      setActionError('Failed to disable staff member.'); // Fix #1 — no alert()
     }
   };
 
   const enableStaff = async (staffId) => {
+    // Fix #4 — confirmation before enable
+    if (!window.confirm('Are you sure you want to enable this staff member?')) return;
     try {
-      await api.patch(
-        `/api/staff/${staffId}/enable`
-      );
-
+      setActionError('');
+      await api.patch(`/api/staff/${staffId}/enable`); // untouched
       await loadStaff();
     } catch (err) {
       console.error(err);
-
-      alert('Failed to enable staff');
+      setActionError('Failed to enable staff member.'); // Fix #1 — no alert()
     }
   };
 
-  const resetPassword = async (staffId) => {
-    const newPassword = prompt(
-      'Enter new password'
-    );
+  // Fix #2 & #17 — open inline reset form instead of prompt()
+  const openResetPassword = (staffId) => {
+    setResetStaffId(staffId);
+    setResetPassword('');
+    setResetError('');
+    setShowResetPassword(false);
+  };
 
-    if (!newPassword) return;
+  const submitResetPassword = async () => {
+    // Fix #11 — min length validation
+    if (resetPassword.length < 8) {
+      setResetError('New password must be at least 8 characters.');
+      return;
+    }
 
     try {
-      await api.patch(
-        `/api/staff/${staffId}/reset-password`,
-        {
-          password: newPassword,
-        }
-      );
-
-      alert('Password updated');
+      setResetLoading(true);
+      setResetError('');
+      await api.patch(`/api/staff/${resetStaffId}/reset-password`, { // untouched
+        password: resetPassword,
+      });
+      setResetStaffId(null);
+      setResetPassword('');
     } catch (err) {
       console.error(err);
-
-      alert('Failed to reset password');
+      setResetError('Failed to reset password. Please try again.');
+    } finally {
+      setResetLoading(false);
     }
   };
 
   const filteredStaff = staff.filter((member) => {
     const matchesSearch =
-      member.full_name
-        ?.toLowerCase()
-        .includes(search.toLowerCase()) ||
-      member.email
-        ?.toLowerCase()
-        .includes(search.toLowerCase());
-
-    const matchesRole =
-      !roleFilter ||
-      member.role === roleFilter;
-
+      member.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      member.email?.toLowerCase().includes(search.toLowerCase());
+    const matchesRole = !roleFilter || member.role === roleFilter;
     return matchesSearch && matchesRole;
   });
 
-  const activeStaff = staff.filter(
-    (s) => s.is_active
-  ).length;
+  const activeStaff = staff.filter((s) => s.is_active).length;
+  const disabledStaff = staff.filter((s) => !s.is_active).length;
 
-  const disabledStaff = staff.filter(
-    (s) => !s.is_active
-  ).length;
-
-  if (loading) {
+  if (authLoading || staffLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-xl">
         Loading Staff...
@@ -158,341 +195,318 @@ export default function StaffPage() {
     );
   }
 
-    return (
-        <RoleGuard allowedRoles={PERMISSIONS.STAFF_MANAGEMENT}>
-            <div className="min-h-screen bg-slate-100 p-8">
+  if (!user) return null;
 
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold">
-          Staff Management
-        </h1>
+  return (
+    <RoleGuard allowedRoles={PERMISSIONS.STAFF_MANAGEMENT}>
+      <div className="min-h-screen bg-slate-100 p-8">
 
-        <button
-          onClick={() =>
-            router.push('/dashboard')
-          }
-          className="bg-slate-900 text-white px-5 py-3 rounded"
-        >
-          Dashboard
-        </button>
-      </div>
-
-      {/* Stats */}
-
-      <div className="grid md:grid-cols-3 gap-6 mb-8">
-
-        <div className="bg-white p-6 rounded-xl shadow">
-          <p className="text-gray-500">
-            Total Staff
-          </p>
-
-          <h2 className="text-4xl font-bold">
-            {staff.length}
-          </h2>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow">
-          <p className="text-gray-500">
-            Active Staff
-          </p>
-
-          <h2 className="text-4xl font-bold text-green-600">
-            {activeStaff}
-          </h2>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow">
-          <p className="text-gray-500">
-            Disabled Staff
-          </p>
-
-          <h2 className="text-4xl font-bold text-red-600">
-            {disabledStaff}
-          </h2>
-        </div>
-
-      </div>
-
-      {/* Create Staff */}
-
-      <div className="bg-white rounded-xl shadow p-6 mb-8">
-
-        <h2 className="text-2xl font-bold mb-6">
-          Add Staff Member
-        </h2>
-
-        <div className="grid md:grid-cols-4 gap-4">
-
-          <input
-            type="text"
-            placeholder="Full Name"
-            value={fullName}
-            onChange={(e) =>
-              setFullName(e.target.value)
-            }
-            className="border rounded p-3"
-          />
-
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) =>
-              setEmail(e.target.value)
-            }
-            className="border rounded p-3"
-          />
-
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) =>
-              setPassword(e.target.value)
-            }
-            className="border rounded p-3"
-          />
-
-          <select
-            value={role}
-            onChange={(e) =>
-              setRole(e.target.value)
-            }
-            className="border rounded p-3"
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-bold">Staff Management</h1>
+          <button
+            onClick={() => router.push('/dashboard')} // untouched
+            className="bg-slate-900 text-white px-5 py-3 rounded"
           >
-            <option value="registration_team">
-              Registration Team
-            </option>
-
-            <option value="technical_team">
-              Technical Team
-            </option>
-
-            <option value="food_staff">
-              Food Staff
-            </option>
-
-            <option value="hospitality_team">
-              Hospitality Team
-            </option>
-
-            <option value="logistics_team">
-              Logistics Team
-            </option>
-
-            <option value="volunteer_coordinator">
-              Volunteer Coordinator
-            </option>
-
-            <option value="volunteer">
-              Volunteer
-            </option>
-          </select>
-
+            Dashboard
+          </button>
         </div>
 
-        <button
-          onClick={createStaff}
-          className="mt-4 bg-blue-600 text-white px-5 py-3 rounded"
-        >
-          Create Staff
-        </button>
+        {/* Fix #5 & #18 — persistent error states */}
+        {loadError && (
+          <div className="mb-6 p-3 bg-red-100 text-red-700 rounded border border-red-300 flex justify-between items-center">
+            <span>{loadError}</span>
+            <button onClick={loadStaff} className="text-sm underline ml-4">Retry</button>
+          </div>
+        )}
+        {actionError && (
+          <div className="mb-6 p-3 bg-red-100 text-red-700 rounded border border-red-300">
+            {actionError}
+          </div>
+        )}
 
-      </div>
-
-      {/* Search */}
-
-      <div className="bg-white rounded-xl shadow p-6 mb-8">
-
-        <div className="grid md:grid-cols-2 gap-4">
-
-          <input
-            type="text"
-            placeholder="Search by name or email"
-            value={search}
-            onChange={(e) =>
-              setSearch(e.target.value)
-            }
-            className="border rounded p-3"
-          />
-
-          <select
-            value={roleFilter}
-            onChange={(e) =>
-              setRoleFilter(e.target.value)
-            }
-            className="border rounded p-3"
-          >
-            <option value="">
-              All Roles
-            </option>
-
-            <option value="registration_team">
-              Registration Team
-            </option>
-
-            <option value="technical_team">
-              Technical Team
-            </option>
-
-            <option value="food_staff">
-              Food Staff
-            </option>
-
-            <option value="hospitality_team">
-              Hospitality Team
-            </option>
-
-            <option value="logistics_team">
-              Logistics Team
-            </option>
-
-            <option value="volunteer_coordinator">
-              Volunteer Coordinator
-            </option>
-
-            <option value="volunteer">
-              Volunteer
-            </option>
-          </select>
-
+        {/* Stats */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white p-6 rounded-xl shadow">
+            <p className="text-gray-500">Total Staff</p>
+            <h2 className="text-4xl font-bold">{staff.length}</h2>
+          </div>
+          <div className="bg-white p-6 rounded-xl shadow">
+            <p className="text-gray-500">Active Staff</p>
+            <h2 className="text-4xl font-bold text-green-600">{activeStaff}</h2>
+          </div>
+          <div className="bg-white p-6 rounded-xl shadow">
+            <p className="text-gray-500">Disabled Staff</p>
+            <h2 className="text-4xl font-bold text-red-600">{disabledStaff}</h2>
+          </div>
         </div>
 
-      </div>
+        {/* Create Staff Form */}
+        <div className="bg-white rounded-xl shadow p-6 mb-8">
+          <h2 className="text-2xl font-bold mb-6">Add Staff Member</h2>
 
-      {/* Staff Table */}
+          {/* Fix #1 & #18 — inline success/error */}
+          {createSuccess && (
+            <div className="mb-4 p-3 bg-green-100 text-green-700 rounded border border-green-300">
+              {createSuccess}
+            </div>
+          )}
+          {createError && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded border border-red-300">
+              {createError}
+            </div>
+          )}
 
-      <div className="bg-white rounded-xl shadow p-6">
+          <div className="grid md:grid-cols-4 gap-4">
 
-        <h2 className="text-2xl font-bold mb-6">
-          Staff Members
-        </h2>
+            {/* Fix #8 — labels for all inputs */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Full Name</label>
+              <input
+                type="text"
+                placeholder="Full Name"
+                value={fullName}
+                onChange={(e) => { setFullName(e.target.value); setCreateError(''); }}
+                className="w-full border rounded p-3"
+                maxLength={100} // Fix #13
+              />
+            </div>
 
-        <div className="overflow-x-auto">
+            <div>
+              <label className="block text-sm font-medium mb-1">Email</label>
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setCreateError(''); }}
+                className="w-full border rounded p-3"
+                maxLength={200} // Fix #13
+              />
+            </div>
 
-          <table className="w-full">
-
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-3">
-                  Name
-                </th>
-
-                <th className="text-left py-3">
-                  Email
-                </th>
-
-                <th className="text-left py-3">
-                  Role
-                </th>
-
-                <th className="text-left py-3">
-                  Last Login
-                </th>
-
-                <th className="text-left py-3">
-                  Status
-                </th>
-
-                <th className="text-left py-3">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-
-              {filteredStaff.map((member) => (
-                <tr
-                  key={member.id}
-                  className="border-b hover:bg-slate-50"
+            {/* Fix #7 — show/hide password */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setCreateError(''); }}
+                  className="w-full border rounded p-3 pr-10"
+                  maxLength={200} // Fix #13
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((p) => !p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  <td className="py-4">
-                    {member.full_name}
-                  </td>
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
+            </div>
 
-                  <td className="py-4">
-                    {member.email}
-                  </td>
+            <div>
+              <label className="block text-sm font-medium mb-1">Role</label>
+              {/* Fix #12 — uses shared ROLE_OPTIONS */}
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full border rounded p-3"
+              >
+                {ROLE_OPTIONS.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+            </div>
 
-                  <td className="py-4 capitalize">
-                    {member.role.replaceAll(
-                      '_',
-                      ' '
-                    )}
-                  </td>
+          </div>
 
-                  <td className="py-4">
-                    {member.last_login
-                      ? new Date(
-                          member.last_login
-                        ).toLocaleString()
-                      : 'Never'}
-                  </td>
+          {/* Fix #6 — loading state on button */}
+          <button
+            onClick={createStaff}
+            disabled={createLoading}
+            className="mt-4 bg-blue-600 text-white px-5 py-3 rounded disabled:opacity-60 flex items-center gap-2"
+          >
+            {createLoading && (
+              <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+            )}
+            {createLoading ? 'Creating...' : 'Create Staff'}
+          </button>
+        </div>
 
-                  <td className="py-4">
-                    {member.is_active ? (
-                      <span className="text-green-600 font-medium">
-                        Active
-                      </span>
-                    ) : (
-                      <span className="text-red-600 font-medium">
-                        Disabled
-                      </span>
-                    )}
-                  </td>
+        {/* Search & Filter */}
+        <div className="bg-white rounded-xl shadow p-6 mb-8">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Search</label>
+              <input
+                type="text"
+                placeholder="Search by name or email"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full border rounded p-3"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Filter by Role</label>
+              {/* Fix #12 — uses shared ROLE_OPTIONS */}
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="w-full border rounded p-3"
+              >
+                <option value="">All Roles</option>
+                {ROLE_OPTIONS.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
 
-                  <td className="py-4">
-                    <div className="flex gap-2 flex-wrap">
+        {/* Staff Table */}
+        <div className="bg-white rounded-xl shadow p-6">
 
-                      <button
-                        onClick={() =>
-                          resetPassword(
-                            member.id
-                          )
-                        }
-                        className="bg-blue-600 text-white px-3 py-2 rounded"
-                      >
-                        Reset Password
-                      </button>
+          {/* Fix #10 — staff count in header */}
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold">Staff Members</h2>
+            <span className="text-sm text-gray-500">
+              Showing {filteredStaff.length} of {staff.length} members
+            </span>
+          </div>
 
-                      {member.is_active ? (
-                        <button
-                          onClick={() =>
-                            disableStaff(
-                              member.id
-                            )
-                          }
-                          className="bg-red-600 text-white px-3 py-2 rounded"
-                        >
-                          Disable
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() =>
-                            enableStaff(
-                              member.id
-                            )
-                          }
-                          className="bg-green-600 text-white px-3 py-2 rounded"
-                        >
-                          Enable
-                        </button>
-                      )}
+          {/* Fix #2 & #17 — inline password reset form instead of prompt() */}
+          {resetStaffId && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+              <h3 className="font-semibold mb-3">Reset Password</h3>
+              {resetError && (
+                <p className="text-red-600 text-sm mb-2">{resetError}</p>
+              )}
+              <div className="flex gap-3 items-center flex-wrap">
+                <div className="relative">
+                  <input
+                    type={showResetPassword ? 'text' : 'password'}
+                    placeholder="New password (min 8 chars)"
+                    value={resetPassword}
+                    onChange={(e) => { setResetPassword(e.target.value); setResetError(''); }}
+                    className="border rounded p-2 pr-10 w-64"
+                    maxLength={200}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResetPassword((p) => !p)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm"
+                  >
+                    {showResetPassword ? '🙈' : '👁️'}
+                  </button>
+                </div>
+                <button
+                  onClick={submitResetPassword}
+                  disabled={resetLoading}
+                  className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-60"
+                >
+                  {resetLoading ? 'Saving...' : 'Save Password'}
+                </button>
+                <button
+                  onClick={() => { setResetStaffId(null); setResetPassword(''); setResetError(''); }}
+                  className="px-4 py-2 rounded border text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
-                    </div>
-                  </td>
-
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-3">Name</th>
+                  <th className="text-left py-3">Email</th>
+                  <th className="text-left py-3">Role</th>
+                  <th className="text-left py-3">Last Login</th>
+                  <th className="text-left py-3">Status</th>
+                  <th className="text-left py-3">Actions</th>
                 </tr>
-              ))}
+              </thead>
+              <tbody>
 
-            </tbody>
+                {/* Fix #9 — empty state */}
+                {filteredStaff.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-gray-400">
+                      {search || roleFilter
+                        ? 'No staff members match your search.'
+                        : 'No staff members yet. Add one above.'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredStaff.map((member) => (
+                    <tr
+                      key={member.id}
+                      className="border-b hover:bg-slate-50"
+                    >
+                      <td className="py-4">{member.full_name}</td>
+                      <td className="py-4">{member.email}</td>
+                      <td className="py-4 capitalize">
+                        {member.role.replaceAll('_', ' ')} {/* untouched */}
+                      </td>
+                      <td className="py-4">
+                        {member.last_login
+                          ? new Date(member.last_login).toLocaleString()
+                          : 'Never'}
+                      </td>
+                      <td className="py-4">
+                        {member.is_active ? (
+                          <span className="text-green-600 font-medium">Active</span>
+                        ) : (
+                          <span className="text-red-600 font-medium">Disabled</span>
+                        )}
+                      </td>
+                      <td className="py-4">
+                        <div className="flex gap-2 flex-wrap">
 
-          </table>
+                          {/* Fix #2 — opens inline form instead of prompt() */}
+                          <button
+                            onClick={() => openResetPassword(member.id)}
+                            className="bg-blue-600 text-white px-3 py-2 rounded"
+                          >
+                            Reset Password
+                          </button>
 
+                          {member.is_active ? (
+                            <button
+                              onClick={() => disableStaff(member.id)} // untouched
+                              className="bg-red-600 text-white px-3 py-2 rounded"
+                            >
+                              Disable
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => enableStaff(member.id)} // untouched
+                              className="bg-green-600 text-white px-3 py-2 rounded"
+                            >
+                              Enable
+                            </button>
+                          )}
+
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+
+              </tbody>
+            </table>
+          </div>
         </div>
+
       </div>
-        </div>
-  </RoleGuard>
+    </RoleGuard>
   );
 }

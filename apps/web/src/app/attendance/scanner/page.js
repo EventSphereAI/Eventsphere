@@ -2,174 +2,287 @@
 
 import { useState, useEffect } from 'react';
 import QRCodeScanner from '@/components/QRCodeScanner';
+import api from '@/utils/api';
+import RoleGuard from '@/components/RoleGuard';
+import { PERMISSIONS } from '@/config/permissions';
 
-  export default function AttendanceScannerPage() {
-    const [scanResult, setScanResult] = useState(null);
-    const [processing, setProcessing] = useState(false);
+function AttendanceScannerContent() {
+  const [scanResult, setScanResult] = useState(null);
+  const [processing, setProcessing] = useState(false);
+
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState('');
   const [scanMode, setScanMode] = useState('entry');
+  const [eventName, setEventName] = useState('');
 
-    const handleScan = async (qrData) => {
-      if (processing) return;
+  useEffect(() => {
+    loadEvents();
+  }, []);
 
-      setProcessing(true);
+  const loadEvents = async () => {
+  try {
+    const res = await api.get('/api/events/');
 
-      try {
-        // Later replace with API call
-        // await api.post('/api/scanning', { qr_token: qrData });
+    console.log("EVENT API:", res.data);
 
-        const delegate = {
-          name: 'Rahul Sharma',
-          college: 'Pimpri Chinchwad University',
-          email: 'rahul@gmail.com',
-          status: 'Checked In',
-          qr: qrData,
-        };
+    const list = res.data.events || [];
 
-        setScanResult(delegate);
+    console.log("EVENT LIST:", list);
 
-        // Optional success sound
-        // new Audio('/success.mp3').play();
+    setEvents(list);
 
-        setTimeout(() => {
-          setScanResult(null);
-          setProcessing(false);
-        }, 2000);
+    const savedEvent = localStorage.getItem(
+  "attendanceSelectedEvent"
+);
 
-      } catch (error) {
-        console.error(error);
+console.log("Saved Event:", savedEvent);
+console.log("Events:", list);
 
+if (
+  savedEvent &&
+  list.some((e) => e.id === savedEvent)
+) {
+  setSelectedEvent(savedEvent);
+
+  const event = list.find((e) => e.id === savedEvent);
+
+if (event) {
+  setEventName(event.title);
+}
+
+} else if (list.length > 0) {
+  setSelectedEvent(list[0].id);
+  setEventName(list[0].title);
+}
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+  const handleScan = async (qrData) => {
+    if (processing) return;
+
+    console.log("QR SCANNED");
+    console.log("selectedEvent =", selectedEvent);
+    console.log("qrData =", qrData);
+
+    if (!selectedEvent) {
+      alert('Please select an event first.');
+      return;
+    }
+
+    setProcessing(true);
+
+    try {
+      const response = await api.post('/api/scan/', {
+        qr_token: qrData,
+        event_id: selectedEvent,
+        scan_type: scanMode,
+      });
+
+      console.log("SCAN RESPONSE");
+      console.log(response.data);
+
+      if (!response.data.success) {
         setScanResult({
           error: true,
-          message: 'Invalid QR Code',
+          message: response.data.message,
         });
+      } else {
+        const delegate = response.data.delegate;
 
-        setTimeout(() => {
-          setScanResult(null);
-          setProcessing(false);
-        }, 2000);
+        setScanResult({
+          name: delegate.full_name,
+          college: delegate.college,
+          email: delegate.email,
+          qr: qrData,
+          status: response.data.message,
+        });
       }
-    };
+    } catch (error) {
 
-    return (
-      <div className="min-h-screen bg-slate-100 p-6">
+  console.log(error);
 
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-slate-900">
-            Attendance Scanner
-          </h1>
+  console.log(error.response);
 
-          <p className="text-slate-600 mt-2">
-            Scan delegate QR codes for attendance.
-          </p>
-        </div>
+  console.log(error.response?.data);
 
-        <div className="grid lg:grid-cols-2 gap-6">
+  setScanResult({
+    error: true,
+    message:
+      error?.response?.data?.detail ||
+      error?.response?.data?.message ||
+      "Scan failed",
+  });
 
-          {/* Scanner */}
-          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
+}
 
-            <h2 className="text-2xl font-semibold mb-4">
-              Live QR Scanner
-            </h2>
+    setTimeout(() => {
+      setScanResult(null);
+      setProcessing(false);
+    }, 2500);
+  };
 
-            <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 min-h-[500px]">
+  return (
+    <div className="min-h-screen bg-slate-100 p-6">
 
-              <QRCodeScanner onScan={handleScan} />
-            </div>
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-slate-900">
+          Attendance Scanner
+        </h1>
 
-          </div>
+        <p className="text-slate-600 mt-2">
+          Scan delegate QR codes for attendance.
+        </p>
+      </div>
 
-          {/* Delegate Details */}
-          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 mb-6">
 
-            <h2 className="text-2xl font-semibold mb-6">
-              Delegate Details
-            </h2>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div>
+  <label className="block text-sm font-medium mb-2">
+    Current Event
+  </label>
 
-            {!scanResult ? (
-              <div className="h-[500px] flex items-center justify-center text-slate-400 text-lg">
-                Waiting for QR Scan...
-              </div>
-            ) : scanResult.error ? (
-              <div className="h-[500px] flex items-center justify-center">
+  <div className="w-full border rounded-lg p-3 bg-gray-100 font-medium">
+    {eventName}
+  </div>
+</div>
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Scan Mode
+            </label>
 
-                <div className="bg-red-100 border border-red-200 rounded-2xl p-8 text-center">
-
-                  <div className="text-5xl mb-4">
-                    ❌
-                  </div>
-
-                  <h3 className="text-2xl font-bold text-red-700">
-                    Invalid QR
-                  </h3>
-
-                </div>
-
-              </div>
-            ) : (
-              <div className="space-y-5">
-
-                <div>
-                  <p className="text-sm text-slate-500">
-                    Full Name
-                  </p>
-
-                  <p className="text-xl font-semibold">
-                    {scanResult.name}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-slate-500">
-                    College
-                  </p>
-
-                  <p className="font-medium">
-                    {scanResult.college}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-slate-500">
-                    Email
-                  </p>
-
-                  <p>
-                    {scanResult.email}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-slate-500">
-                    Attendance Status
-                  </p>
-
-                  <span className="inline-flex px-4 py-2 rounded-full bg-green-100 text-green-700 font-medium">
-                    ✓ Attendance Marked Successfully
-                  </span>
-                </div>
-
-                <div>
-                  <p className="text-sm text-slate-500">
-                    QR Data
-                  </p>
-
-                  <div className="bg-slate-100 rounded-xl p-3 text-sm break-all">
-                    {scanResult.qr}
-                  </div>
-                </div>
-
-              </div>
-            )}
-
+            <select
+              className="w-full border rounded-lg p-3"
+              value={scanMode}
+              onChange={(e) =>
+                setScanMode(e.target.value)
+              }
+            >
+              <option value="entry">Entry</option>
+              <option value="exit">Exit</option>
+            </select>
           </div>
 
         </div>
 
       </div>
 
-    );
-  }
+      <div className="grid lg:grid-cols-2 gap-6">
 
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
+
+          <h2 className="text-2xl font-semibold mb-4">
+            Live QR Scanner
+          </h2>
+
+          <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 min-h-[500px]">
+
+            <QRCodeScanner onScan={handleScan} />
+
+          </div>
+
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
+
+          <h2 className="text-2xl font-semibold mb-6">
+            Delegate Details
+          </h2>
+
+          {!scanResult ? (
+            <div className="h-[500px] flex items-center justify-center text-slate-400 text-lg">
+              Waiting for QR Scan...
+            </div>
+          ) : scanResult.error ? (
+            <div className="h-[500px] flex items-center justify-center">
+
+              <div className="bg-red-100 border border-red-200 rounded-2xl p-8 text-center">
+
+                <div className="text-5xl mb-4">
+                  ❌
+                </div>
+
+                <h3 className="text-2xl font-bold text-red-700">
+                  Scan Failed
+                </h3>
+
+                <p className="mt-3 text-red-600">
+                  {scanResult.message}
+                </p>
+
+              </div>
+
+            </div>
+          ) : (
+            <div className="space-y-5">
+
+              <div>
+                <p className="text-sm text-slate-500">
+                  Full Name
+                </p>
+
+                <p className="text-xl font-semibold">
+                  {scanResult.name}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-slate-500">
+                  College
+                </p>
+
+                <p>
+                  {scanResult.college}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-slate-500">
+                  Email
+                </p>
+
+                <p>
+                  {scanResult.email}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-slate-500">
+                  Status
+                </p>
+
+                <span className="inline-flex px-4 py-2 rounded-full bg-green-100 text-green-700 font-medium">
+                  {scanResult.status}
+                </span>
+              </div>
+
+              <div>
+                <p className="text-sm text-slate-500">
+                  QR Data
+                </p>
+
+                <div className="bg-slate-100 rounded-xl p-3 text-sm break-all">
+                  {scanResult.qr}
+                </div>
+              </div>
+
+            </div>
+          )}
+
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
+
+export default function AttendanceScannerPage() {
+  return (
+    <RoleGuard allowedRoles={PERMISSIONS.ATTENDANCE}>
+      <AttendanceScannerContent />
+    </RoleGuard>
+  );
+}
