@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import api from '@/utils/api';
 import { QRCodeCanvas } from 'qrcode.react';
 
-export default function RegisterPage() {
+function RegisterForm() {
   const searchParams = useSearchParams();
 
   const [loading, setLoading] = useState(false);
@@ -410,4 +410,18 @@ export default function RegisterPage() {
 
     </div>
   );
+}
+
+export default function RegisterPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className="max-w-3xl mx-auto p-8">
+                    Loading...
+                </div>
+            }
+        >
+            <RegisterForm />
+        </Suspense>
+    );
 }
