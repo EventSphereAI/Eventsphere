@@ -25,7 +25,7 @@ export default function BulkImportPage() {
 
         try {
 
-            const res = await api.get("/api/events");
+            const res = await api.get("/api/events/");
 
             setEvents(res.data.events);
 

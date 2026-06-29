@@ -28,7 +28,8 @@ app = FastAPI(
     title="EventSphere AI API",
     description="Multi-tenant event management platform",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    redirect_slashes=False,
 )
 
 # CORS - Allow frontend to call backend
