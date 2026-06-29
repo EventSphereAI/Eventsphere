@@ -69,7 +69,7 @@ export default function BulkImportPage() {
 
         const res = await api.post(
 
-            "/api/bulk/import/",
+            "/api/bulk/import",
 
             formData,
 
@@ -138,6 +138,7 @@ async function sendEmails() {
             err.response?.data?.detail ||
             err.response?.data?.error ||
             "Failed to start email campaign."
+
         );
 
     } finally {
