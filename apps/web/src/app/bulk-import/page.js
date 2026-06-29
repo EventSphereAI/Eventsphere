@@ -69,7 +69,7 @@ export default function BulkImportPage() {
 
         const res = await api.post(
 
-            "/api/bulk/import",
+            "/api/bulk/import/",
 
             formData,
 
