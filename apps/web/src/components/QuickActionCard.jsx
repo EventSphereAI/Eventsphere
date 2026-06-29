@@ -6,39 +6,63 @@ export default function QuickActionCard({
   title,
   description,
   icon: Icon,
-  color = "from-cyan-400 to-green-400",
+  color = "from-cyan-500 to-blue-500",
 }) {
   return (
     <Link
       href={href}
-      className="group bg-white border border-border rounded-2xl p-5 hover:shadow-soft hover:-translate-y-1 transition-all duration-300"
+      className="
+        group
+        rounded-2xl
+        border
+        border-border
+        bg-white
+        p-6
+        transition-all
+        duration-300
+        hover:border-cyan-200
+        hover:shadow-xl
+        hover:-translate-y-1
+      "
     >
       <div
         className={`
-          w-12 h-12
-          rounded-xl
-          bg-gradient-to-r
+          h-14
+          w-14
+          rounded-2xl
+          bg-gradient-to-br
           ${color}
-          flex items-center justify-center
-          text-white
+          flex
+          items-center
+          justify-center
+          shadow-md
         `}
       >
-        <Icon size={22} />
+        <Icon
+          size={24}
+          className="text-white"
+        />
       </div>
 
-      <h3 className="mt-5 text-lg font-semibold text-text">
+      <h3 className="mt-6 text-lg font-semibold text-text">
         {title}
       </h3>
 
-      <p className="mt-2 text-sm text-muted">
+      <p className="mt-2 text-sm leading-6 text-muted">
         {description}
       </p>
 
-      <div className="mt-5 flex items-center gap-2 text-primary font-medium">
+      <div className="mt-6 flex items-center text-primary font-semibold">
         Open
+
         <ArrowRight
           size={18}
-          className="group-hover:translate-x-1 transition"
+          className="
+            ml-2
+            transition-transform
+            duration-300
+            group-hover:translate-x-1
+          "
         />
       </div>
     </Link>

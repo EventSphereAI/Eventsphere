@@ -12,6 +12,7 @@ import {
   Building2,
   UserCog,
   FileText,
+  Upload,
 } from "lucide-react";
 
 export const sidebarConfig = {
@@ -81,6 +82,13 @@ export const sidebarConfig = {
           href: "/settings",
           icon: Settings,
         },
+
+        {
+    title: "Bulk Import",
+    href: "/bulk-import",
+    icon: Upload,
+    permission: "delegates.manage",
+},
       ],
     },
   ],

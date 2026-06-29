@@ -17,6 +17,10 @@ import {
   QrCode,
   UtensilsCrossed,
   Hotel,
+  Upload,
+  UserCog,
+  FileBarChart,
+  UserPlus,
 } from "lucide-react";
 function DashboardContent() {
   const { user, loading, logout, tenant } = useAuth();
@@ -126,6 +130,79 @@ function DashboardContent() {
 
   if (!user) return null;
 
+  const quickActions = [
+  {
+    title: "Events",
+    description: "Create and manage events",
+    href: "/events",
+    icon: CalendarDays,
+    color: "from-cyan-500 to-blue-500",
+  },
+  {
+    title: "Delegates",
+    description: "Manage delegate records",
+    href: "/delegates",
+    icon: Users,
+    color: "from-violet-500 to-purple-500",
+  },
+  {
+    title: "Attendance",
+    description: "Track delegate check-ins",
+    href: "/attendance",
+    icon: ClipboardCheck,
+    color: "from-green-500 to-emerald-500",
+  },
+  {
+    title: "Scanner",
+    description: "Scan delegate QR codes",
+    href: "/scanner",
+    icon: QrCode,
+    color: "from-pink-500 to-rose-500",
+  },
+  {
+    title: "Registration",
+    description: "Manage registrations",
+    href: "/registration",
+    icon: UserPlus,
+    color: "from-blue-500 to-indigo-500",
+  },
+  {
+    title: "Food",
+    description: "Manage food distribution",
+    href: "/food",
+    icon: UtensilsCrossed,
+    color: "from-orange-500 to-red-500",
+  },
+  {
+    title: "Accommodation",
+    description: "Manage room allocation",
+    href: "/accommodation",
+    icon: Hotel,
+    color: "from-teal-500 to-cyan-500",
+  },
+  {
+    title: "Reports",
+    description: "View reports & analytics",
+    href: "/reports",
+    icon: FileBarChart,
+    color: "from-slate-500 to-gray-600",
+  },
+  {
+    title: "Staff",
+    description: "Manage event staff",
+    href: "/staff",
+    icon: UserCog,
+    color: "from-fuchsia-500 to-pink-500",
+  },
+  {
+    title: "Bulk Import",
+    description: "Import delegates & send emails",
+    href: "/bulk-import",
+    icon: Upload,
+    color: "from-emerald-500 to-green-600",
+  },
+];
+
   return (
   <AppShell>
 
@@ -140,7 +217,7 @@ function DashboardContent() {
         )}
 
         {/* Stats Section — Fix #8: show — while loading */}
-    <section className="grid gap-6 lg:grid-cols-4 md:grid-cols-2">
+    <section className="grid gap-6 grid-cols-2 lg:grid-cols-4">
 
   <StatCard
     title="Total Events"
@@ -176,7 +253,7 @@ function DashboardContent() {
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-2xl font-bold">Events</h3>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               {/* Fix #6 — manual refresh button */}
               <button
                 onClick={() => { fetchEvents(); fetchStats(); }}
@@ -216,7 +293,7 @@ function DashboardContent() {
               No events yet. Create your first event!
             </p>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {events.map((event) => (
                 <div
   key={event.id}
@@ -323,82 +400,16 @@ className="bg-white border border-border rounded-2xl p-5 hover:shadow-soft hover
           )}
         </section>
 
-        {/* Quick Links — Fix #13: changed to grid-cols-3 to handle 9 buttons evenly */}
-        <section className="mt-8 grid gap-4 grid-cols-3 md:grid-cols-3 lg:grid-cols-9">
+       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 
-          <button
-            onClick={() => router.push('/events')} // same, untouched
-            className="card text-center hover:shadow-lg transition"
-          >
-            <p className="text-2xl mb-2">📋</p>
-            <p className="font-semibold">Events</p>
-          </button>
+  {quickActions.map((action) => (
+    <QuickActionCard
+      key={action.title}
+      {...action}
+    />
+  ))}
 
-          <button
-            onClick={() => router.push('/delegates')} // same, untouched
-            className="card text-center hover:shadow-lg transition"
-          >
-            <p className="text-2xl mb-2">👥</p>
-            <p className="font-semibold">Delegates</p>
-          </button>
-
-          <button
-            onClick={() => router.push('/accommodation')} // same, untouched
-            className="card text-center hover:shadow-lg transition"
-          >
-            <p className="text-2xl mb-2">🏠</p>
-            <p className="font-semibold">Accommodation</p>
-          </button>
-
-          <button
-            onClick={() => router.push('/reports')} // same, untouched
-            className="card text-center hover:shadow-lg transition"
-          >
-            <p className="text-2xl mb-2">🔍</p>
-            <p className="font-semibold">Reports</p>
-          </button>
-
-          <button
-            onClick={() => router.push('/attendance')} // same, untouched
-            className="card text-center hover:shadow-lg transition"
-          >
-            <p className="text-2xl mb-2">📊</p>
-            <p className="font-semibold">Attendance</p>
-          </button>
-
-          <button
-            onClick={() => router.push('/scanner')} // same, untouched
-            className="card text-center hover:shadow-lg transition"
-          >
-            <p className="text-2xl mb-2">📷</p>
-            <p className="font-semibold">Scanner</p>
-          </button>
-
-          <button
-            onClick={() => router.push('/registration')} // same, untouched
-            className="card text-center hover:shadow-lg transition"
-          >
-            <p className="text-2xl mb-2">📦</p>
-            <p className="font-semibold">Registration</p>
-          </button>
-
-          <button
-            onClick={() => router.push('/food')} // same, untouched
-            className="card text-center hover:shadow-lg transition"
-          >
-            <p className="text-2xl mb-2">🍽️</p>
-            <p className="font-semibold">Food</p>
-          </button>
-
-          <button
-            onClick={() => router.push('/staff')} // same, untouched
-            className="card text-center hover:shadow-lg transition"
-          >
-            <p className="text-2xl mb-2">👨‍💼</p>
-            <p className="font-semibold">Staff</p>
-          </button>
-
-        </section>
+</div>
 
       </main>
     </AppShell>
