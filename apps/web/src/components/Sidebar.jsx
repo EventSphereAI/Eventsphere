@@ -8,7 +8,10 @@ import { LogOut } from "lucide-react";
 import { sidebarConfig } from "@/config/sidebar";
 import { useAuth } from "@/context/AuthContext";
 
-export default function Sidebar() {
+export default function Sidebar({
+  open,
+  setOpen,
+}) {
   const pathname = usePathname();
 
   const { user, tenant, logout } = useAuth();
@@ -16,7 +19,39 @@ export default function Sidebar() {
   const sections = sidebarConfig[user?.role] || [];
 
   return (
-    <aside className="w-[280px] h-screen bg-white border-r border-border flex flex-col">
+    <>
+  {open && (
+    <div
+      onClick={() => setOpen(false)}
+      className="fixed inset-0 bg-black/40 z-40 md:hidden"
+    />
+  )}
+
+  <aside
+    className={`
+      fixed
+      md:relative
+      top-0
+      left-0
+      h-screen
+      w-[280px]
+      bg-white
+      border-r
+      border-border
+      flex
+      flex-col
+      z-50
+      transform
+      transition-transform
+      duration-300
+
+      ${
+        open
+          ? "translate-x-0"
+          : "-translate-x-full md:translate-x-0"
+      }
+    `}
+  >
 
       {/* ========================= */}
       {/* Logo */}
@@ -71,8 +106,9 @@ export default function Sidebar() {
                 return (
 
                   <Link
-                    key={item.href}
-                    href={item.href}
+    key={item.href}
+    href={item.href}
+    onClick={() => setOpen(false)}
                     className={`
                       flex
                       items-center
@@ -170,5 +206,6 @@ export default function Sidebar() {
       </div>
 
     </aside>
+    </>
   );
 }
