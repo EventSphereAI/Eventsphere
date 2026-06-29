@@ -28,8 +28,6 @@ async def create_event(
     request: Request,
     current_user: dict = Depends(require_admin)
 ):
-    """Create a new event"""
-
     tenant_id = request.state.tenant_id
     event_id = str(uuid.uuid4())
 
@@ -47,7 +45,7 @@ async def create_event(
                 status
             )
             VALUES (
-                $1, $2, $3, $4, $5, $6, $7, 'draft'
+                $1,$2,$3,$4,$5,$6,$7,'draft'
             )
             """,
             event_id,
@@ -70,60 +68,9 @@ async def list_events(
     request: Request,
     current_user: dict = Depends(require_admin)
 ):
-
-
-
     tenant_id = request.state.tenant_id
 
     async with TenantDB(tenant_id) as conn:
-
-        count = await conn.fetchval("""
-            SELECT COUNT(*)
-            FROM events
-        """)
-
-        events = await conn.fetch("""
-            SELECT
-                e.id,
-                e.title,
-                e.venue,
-                e.start_date,
-                e.end_date,
-                e.status,
-                e.created_at,
-
-                COUNT(d.id) AS delegate_count,
-
-                COUNT(
-                    CASE
-                        WHEN d.checked_in = true
-                        THEN 1
-                    END
-                ) AS checked_in_count,
-
-                COUNT(
-                    CASE
-                        WHEN d.accommodation_required = true
-                        THEN 1
-                    END
-                ) AS accommodation_count
-
-            FROM events e
-
-            LEFT JOIN delegates d
-                ON d.event_id = e.id
-
-            GROUP BY
-                e.id,
-                e.title,
-                e.venue,
-                e.start_date,
-                e.end_date,
-                e.status,
-                e.created_at
-
-            ORDER BY e.start_date DESC
-        """)
 
         events = await conn.fetch(
             """
@@ -140,14 +87,14 @@ async def list_events(
 
                 COUNT(
                     CASE
-                        WHEN d.checked_in = true
+                        WHEN d.checked_in = TRUE
                         THEN 1
                     END
                 ) AS checked_in_count,
 
                 COUNT(
                     CASE
-                        WHEN d.accommodation_required = true
+                        WHEN d.accommodation_required = TRUE
                         THEN 1
                     END
                 ) AS accommodation_count
@@ -157,7 +104,9 @@ async def list_events(
             LEFT JOIN delegates d
                 ON d.event_id = e.id
 
-            WHERE e.tenant_id = $1
+            WHERE
+                e.tenant_id = $1
+                AND e.is_deleted = FALSE
 
             GROUP BY
                 e.id,
@@ -184,8 +133,6 @@ async def get_event(
     request: Request,
     current_user: dict = Depends(require_admin)
 ):
-    """Get event details"""
-
     tenant_id = request.state.tenant_id
 
     async with TenantDB(tenant_id) as conn:
@@ -194,8 +141,9 @@ async def get_event(
             """
             SELECT *
             FROM events
-            WHERE id = $1
-            AND tenant_id = $2
+            WHERE id=$1
+            AND tenant_id=$2
+            AND is_deleted=FALSE
             """,
             event_id,
             tenant_id
@@ -217,23 +165,21 @@ async def update_event(
     request: Request,
     current_user: dict = Depends(require_admin)
 ):
-    """Update event"""
-
     tenant_id = request.state.tenant_id
 
     updates = []
     values = []
 
     if body.title:
-        updates.append(f"title = ${len(values) + 1}")
+        updates.append(f"title = ${len(values)+1}")
         values.append(body.title)
 
     if body.venue:
-        updates.append(f"venue = ${len(values) + 1}")
+        updates.append(f"venue = ${len(values)+1}")
         values.append(body.venue)
 
     if body.status:
-        updates.append(f"status = ${len(values) + 1}")
+        updates.append(f"status = ${len(values)+1}")
         values.append(body.status)
 
     if not updates:
@@ -252,14 +198,56 @@ async def update_event(
         SET {', '.join(updates)}
         WHERE id = ${event_placeholder}
         AND tenant_id = ${tenant_placeholder}
+        AND is_deleted = FALSE
     """
 
     async with TenantDB(tenant_id) as conn:
-        result = await conn.execute(
-            query,
-            *values
-        )
+        await conn.execute(query, *values)
 
     return {
         "message": "Event updated"
+    }
+
+
+@router.delete("/{event_id}")
+async def delete_event(
+    event_id: str,
+    request: Request,
+    current_user: dict = Depends(require_admin)
+):
+    tenant_id = request.state.tenant_id
+
+    async with TenantDB(tenant_id) as conn:
+
+        event = await conn.fetchrow(
+            """
+            SELECT id
+            FROM events
+            WHERE id=$1
+            AND tenant_id=$2
+            AND is_deleted=FALSE
+            """,
+            event_id,
+            tenant_id
+        )
+
+        if not event:
+            raise HTTPException(
+                status_code=404,
+                detail="Event not found"
+            )
+
+        await conn.execute(
+            """
+            UPDATE events
+            SET is_deleted=TRUE
+            WHERE id=$1
+            AND tenant_id=$2
+            """,
+            event_id,
+            tenant_id
+        )
+
+    return {
+        "message": "Event deleted successfully"
     }

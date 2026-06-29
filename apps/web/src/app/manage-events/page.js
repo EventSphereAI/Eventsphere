@@ -26,12 +26,21 @@ setEvents(res.data.events || []);
     }
   };
 
-  const deleteEvent = () => {
-    setEvents(events.filter(e => e.id !== selectedEvent.id));
+ const deleteEvent = async () => {
+  try {
+    await api.delete(`/api/events/${selectedEvent.id}`);
+
+    await loadEvents();
 
     setSelectedEvent(null);
     setConfirmName('');
-  };
+
+    alert('Event deleted successfully');
+  } catch (err) {
+    console.error(err);
+    alert('Failed to delete event');
+  }
+};
 
   const filteredEvents = events.filter(event =>
     event.title.toLowerCase().includes(search.toLowerCase())
