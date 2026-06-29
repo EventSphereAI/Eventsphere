@@ -191,6 +191,14 @@ function DashboardContent() {
               >
                 Create Event
               </button>
+
+                <button
+    onClick={() => router.push('/manage-events')}
+    className="px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-medium transition"
+  >
+    Manage Events
+  </button>
+  
             </div>
           </div>
 
@@ -302,7 +310,7 @@ className="bg-white border border-border rounded-2xl p-5 hover:shadow-soft hover
       className="btn-primary flex-1"
     >
 
-      Manage
+      Register
 
     </button>
 
