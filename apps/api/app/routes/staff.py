@@ -29,7 +29,7 @@ class ResetPasswordRequest(BaseModel):
 # List Staff
 # ==========================================================
 
-@router.get("/")
+@router.get("")
 async def list_staff(
     current_user: dict = Depends(require_admin)
 ):
@@ -61,7 +61,7 @@ async def list_staff(
 # Create Staff
 # ==========================================================
 
-@router.post("/")
+@router.post("")
 async def create_staff(
     body: CreateStaffRequest,
     current_user: dict = Depends(require_admin)
