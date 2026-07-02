@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, field_validator
 from app.database.connection import TenantDB
-from app.auth.jwt import require_registration
+from app.auth.jwt import (
+    require_registration,
+    require_any_permission,
+)
 from app.routes.scanning import generate_qr_token
 from app.services.email_service import send_registration_email
 
@@ -160,7 +163,11 @@ async def create_delegate(
 async def list_delegates(
     event_id: str,
     request: Request,
-    current_user: dict = Depends(require_registration)
+    current_user: dict = Depends(
+    require_any_permission(
+        ["registration", "accommodation"]
+    )
+)
 ):
     tenant_id = request.state.tenant_id
 

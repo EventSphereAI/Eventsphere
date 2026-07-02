@@ -14,6 +14,18 @@ router = APIRouter()
 
 QR_SECRET = os.getenv("QR_HMAC_SECRET", "change-me-qr-secret")
 
+SCAN_PERMISSION = {
+    "entry": "attendance",
+    "exit": "attendance",
+    "kit_collection": "registration",
+    "food_breakfast": "food",
+    "food_lunch": "food",
+    "food_high_tea": "food",
+    "food_dinner": "food",
+    "accommodation_checkin": "accommodation",
+    "accommodation_checkout": "accommodation",
+}
+
 
 # ==========================================================
 # QR HELPERS
@@ -98,44 +110,6 @@ async def scan_qr(
 
     tenant_id = request.state.tenant_id
 
-# ------------------------------------------------------
-# Role Validation
-# ------------------------------------------------------
-
-    role = current_user["role"]
-
-    if body.scan_type in ("entry", "exit"):
-        allowed = {"organizer", "super_admin", "technical_team"}
-
-    elif body.scan_type == "kit_collection":
-        allowed = {"organizer", "super_admin", "registration_team"}
-
-    elif body.scan_type in (
-        "food_breakfast",
-        "food_lunch",
-        "food_high_tea",
-        "food_dinner"
-    ):
-        allowed = {"organizer", "super_admin", "food_staff"}
-
-    elif body.scan_type in (
-        "accommodation_checkin",
-        "accommodation_checkout"
-    ):
-        allowed = {"organizer", "super_admin", "hospitality_team"}
-
-    else:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid scan type."
-        )
-
-    if role not in allowed:
-        raise HTTPException(
-            status_code=403,
-            detail="You are not authorized to perform this scan."
-        )
-
     # ------------------------------------------------------
     # 1. Verify QR Signature
     # ------------------------------------------------------
@@ -156,6 +130,38 @@ async def scan_qr(
         )
 
     async with TenantDB(tenant_id) as conn:
+
+        permission = SCAN_PERMISSION.get(body.scan_type)
+
+        if permission is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid scan type."
+            )
+
+        # Organizer & Super Admin bypass permission checks
+        if current_user["role"] not in ["organizer", "super_admin"]:
+
+            permission_exists = await conn.fetchrow(
+                """
+                SELECT 1
+                FROM staff_permissions
+                WHERE user_id = $1
+                AND tenant_id = $2
+                AND event_id = $3
+                AND permission = $4
+                """,
+                current_user["user_id"],
+                tenant_id,
+                body.event_id,
+                permission
+            )
+
+            if not permission_exists:
+                raise HTTPException(
+                    status_code=403,
+                    detail="You are not authorized to perform this scan."
+                )
 
         # --------------------------------------------------
         # 2. Fetch Delegate

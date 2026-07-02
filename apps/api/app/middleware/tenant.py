@@ -91,7 +91,6 @@ class TenantMiddleware(BaseHTTPMiddleware):
         dev_slug = request.headers.get("X-Tenant-Slug")
 
         if dev_slug:
-            print("TENANT HEADER FOUND:", dev_slug)
             return dev_slug
 
         # Production mode
@@ -99,7 +98,6 @@ class TenantMiddleware(BaseHTTPMiddleware):
             slug = host[: -(len(PLATFORM_DOMAIN) + 1)]
 
             if slug:
-                print("TENANT SUBDOMAIN FOUND:", slug)
                 return slug
 
         return None

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, Depends
 from app.database.connection import TenantDB
-from app.auth.jwt import require_admin
+from app.auth.jwt import require_admin, require_permission
 from datetime import date
 from fastapi.responses import StreamingResponse
 
@@ -14,7 +14,7 @@ router = APIRouter()
 async def attendance_report(
     event_id: str,
     request: Request,
-    current_user: dict = Depends(require_admin)
+    current_user: dict = Depends(require_permission("attendance"))
 ):
     """Get attendance report for an event"""
     tenant_id = request.state.tenant_id
@@ -78,7 +78,7 @@ async def attendance_report(
 async def food_report(
     event_id: str,
     request: Request,
-    current_user: dict = Depends(require_admin)
+    current_user: dict = Depends(require_permission("food"))
 ):
     """
     Food dashboard statistics.
@@ -86,10 +86,6 @@ async def food_report(
 
     tenant_id = request.state.tenant_id
 
-    print("========== FOOD REPORT ==========")
-    print("EVENT ID:", event_id)
-    print("TENANT:", tenant_id)
-    print("=================================")
 
     async with TenantDB(tenant_id) as conn:
 
@@ -145,7 +141,7 @@ async def food_report(
 async def accommodation_report(
     event_id: str,
     request: Request,
-    current_user: dict = Depends(require_admin)
+    current_user: dict = Depends(require_permission("accommodation"))
 ):
     """Get accommodation report"""
     tenant_id = request.state.tenant_id
@@ -172,7 +168,7 @@ async def accommodation_report(
 async def attendance_details(
     event_id: str,
     request: Request,
-    current_user: dict = Depends(require_admin)
+    current_user: dict = Depends(require_permission("attendance"))
 ):
     tenant_id = request.state.tenant_id
 
@@ -199,7 +195,7 @@ async def attendance_details(
 async def registration_report(
     event_id: str,
     request: Request,
-    current_user: dict = Depends(require_admin)
+    current_user: dict = Depends(require_permission("registration"))
 ):
     """
     Registration kit distribution statistics.

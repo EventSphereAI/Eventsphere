@@ -319,10 +319,40 @@ async def me(
             current_user["user_id"]
         )
 
+        permissions = await conn.fetch(
+            """
+            SELECT DISTINCT permission
+            FROM staff_permissions
+            WHERE user_id = $1
+            """,
+            current_user["user_id"]
+        )
+
+        event_ids = await conn.fetch(
+            """
+            SELECT DISTINCT event_id
+            FROM staff_event_assignments
+            WHERE user_id = $1
+            """,
+            current_user["user_id"]
+        )
+
     if not user:
         raise HTTPException(
             status_code=404,
             detail="User not found"
         )
 
-    return dict(user)
+    return {
+    **dict(user),
+
+    "permissions": [
+        p["permission"]
+        for p in permissions
+    ],
+
+    "event_ids": [
+        str(e["event_id"])
+        for e in event_ids
+    ]
+}

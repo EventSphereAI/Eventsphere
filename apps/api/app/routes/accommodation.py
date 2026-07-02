@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
 from pydantic import BaseModel
 from app.database.connection import TenantDB
-from app.auth.jwt import require_accommodation
+from app.auth.jwt import (
+    require_permission,
+    require_any_staff,
+    verify_permission,
+)
 import uuid
 
 router = APIRouter()
@@ -22,10 +26,15 @@ class RoomAllocation(BaseModel):
 async def create_room(
     body: RoomCreate,
     request: Request,
-    current_user: dict = Depends(require_accommodation)
+    current_user: dict = Depends(require_any_staff)
 ):
     """Create a room"""
     tenant_id = request.state.tenant_id
+    await verify_permission(
+    current_user,
+    body.event_id,
+    "accommodation"
+)
     room_id = str(uuid.uuid4())
     
     async with TenantDB(tenant_id) as conn:
@@ -41,7 +50,7 @@ async def create_room(
 async def list_rooms(
     event_id: str,
     request: Request,
-    current_user: dict = Depends(require_accommodation)
+    current_user: dict = Depends(require_permission("accommodation"))
 ):
     """List all rooms for an event"""
     tenant_id = request.state.tenant_id
@@ -76,7 +85,7 @@ async def list_rooms(
 async def list_allocations(
     event_id: str,
     request: Request,
-    current_user: dict = Depends(require_accommodation)
+    current_user: dict = Depends(require_permission("accommodation"))
 ):
     tenant_id = request.state.tenant_id
 
@@ -108,7 +117,7 @@ async def list_allocations(
 async def accommodation_stats(
     event_id: str,
     request: Request,
-    current_user: dict = Depends(require_accommodation)
+    current_user: dict = Depends(require_permission("accommodation"))
 ):
     tenant_id = request.state.tenant_id
 
@@ -179,10 +188,15 @@ async def accommodation_stats(
 async def allocate_delegate_to_room(
     body: RoomAllocation,
     request: Request,
-    current_user: dict = Depends(require_accommodation)
+    current_user: dict = Depends(require_any_staff)
 ):
     """Allocate a delegate to a room"""
     tenant_id = request.state.tenant_id
+    await verify_permission(
+    current_user,
+    body.event_id,
+    "accommodation"
+)
     allocation_id = str(uuid.uuid4())
     
     async with TenantDB(tenant_id) as conn:
@@ -217,7 +231,7 @@ async def allocate_delegate_to_room(
 async def checkin_to_room(
     allocation_id: str,
     request: Request,
-    current_user: dict = Depends(require_accommodation)
+    current_user: dict = Depends(require_permission("accommodation"))
 ):
     """Check in delegate to room"""
     tenant_id = request.state.tenant_id
@@ -235,7 +249,7 @@ async def checkin_to_room(
 async def checkout_from_room(
         allocation_id: str,
         request: Request,
-        current_user: dict = Depends(require_accommodation)
+        current_user: dict = Depends(require_permission("accommodation"))
     ):
         tenant_id = request.state.tenant_id
 

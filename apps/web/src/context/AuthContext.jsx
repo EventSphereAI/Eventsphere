@@ -175,25 +175,9 @@ orgSlug
 
   setError(null);
 
-  const role = data.user?.role;
+await fetchMe();
 
-  const roleRoutes = {
-  super_admin: "/super-admin",
-  organizer: "/dashboard",
-
-  technical_team: "/attendance",
-  registration_team: "/registration",
-  food_staff: "/food",
-  hospitality_team: "/accommodation",
-
-  logistics_team: "/dashboard",
-  volunteer_coordinator: "/dashboard",
-  volunteer: "/dashboard",
-};
-
-  router.push(
-    roleRoutes[role] || "/dashboard"
-  );
+router.push("/dashboard");
 
   return data;
 } catch (err) {

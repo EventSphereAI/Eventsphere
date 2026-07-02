@@ -7,6 +7,7 @@ import { LogOut } from "lucide-react";
 
 import { sidebarConfig } from "@/config/sidebar";
 import { useAuth } from "@/context/AuthContext";
+import { sidebarItems } from "@/config/sidebarPermissions";
 
 export default function Sidebar({
   open,
@@ -16,7 +17,77 @@ export default function Sidebar({
 
   const { user, tenant, logout } = useAuth();
 
-  const sections = sidebarConfig[user?.role] || [];
+ const sections = [
+  {
+    section: "MAIN",
+    items: sidebarItems.filter((item) => {
+
+      // Dashboard is always visible
+      if (item.always) return true;
+
+      // Organizer & Super Admin
+      if (
+        user?.role === "organizer" ||
+        user?.role === "super_admin"
+      ) {
+        return true;
+      }
+
+      // Registration Team
+      if (user?.role === "registration_team") {
+        return [
+          "/delegates",
+          "/registration",
+        ].includes(item.href);
+      }
+
+      /// Technical Team (Attendance)
+if (user?.role === "technical_team") {
+  return [
+    "/attendance",
+  ].includes(item.href);
+}
+
+// Food Staff
+if (user?.role === "food_staff") {
+  return [
+    "/food",
+  ].includes(item.href);
+}
+
+// Hospitality Team (Accommodation)
+if (user?.role === "hospitality_team") {
+  return [
+    "/accommodation",
+  ].includes(item.href);
+}
+
+// Logistics Team
+if (user?.role === "logistics_team") {
+  return [
+    "/dashboard",
+  ].includes(item.href);
+}
+
+// Volunteer Coordinator
+if (user?.role === "volunteer_coordinator") {
+  return [
+    "/dashboard",
+  ].includes(item.href);
+}
+
+// Volunteer
+if (user?.role === "volunteer") {
+  return [
+    "/dashboard",
+  ].includes(item.href);
+}
+
+      return false;
+
+    }),
+  },
+];
 
   return (
     <>
@@ -62,8 +133,8 @@ export default function Sidebar({
         <Image
           src="/logo-full.png"
           alt="EventSphere"
-          width={180}
-          height={55}
+          width={240}
+          height={75}
           priority
           className="object-contain"
         />
@@ -209,3 +280,4 @@ export default function Sidebar({
     </>
   );
 }
+

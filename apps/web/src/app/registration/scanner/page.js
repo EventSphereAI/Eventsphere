@@ -66,8 +66,6 @@ function RegistrationScannerContent() {
         scan_type: 'kit_collection',
       });
 
-      console.log(response.data);
-
       if (!response.data.success) {
         setScanResult({
           error: true,

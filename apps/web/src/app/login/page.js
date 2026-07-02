@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
-
+import Image from "next/image";
 export default function LoginPage() {
   const [orgSlug, setOrgSlug] = useState('');
   const [email, setEmail] = useState('');
@@ -73,12 +73,21 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-secondary">
-      <div className="bg-white p-8 rounded-lg shadow-xl w-96">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cyan-500 via-teal-400 to-emerald-200">
+      <div className="bg-white p-10 rounded-3xl shadow-2xl w-[440px] border border-gray-100">
 
-        <h1 className="text-3xl font-bold text-center mb-8 text-primary">
-          EventSphere
-        </h1>
+        <div className="flex flex-col items-center mb-8">
+
+  <Image
+    src="/logo-full.png"
+    alt="EventSphere"
+    width={300}
+    height={90}
+    priority
+    className="h-auto w-72 object-contain"
+  />
+
+</div>
 
         {/* Fix #12 — role="alert" for screen readers */}
         {error && (

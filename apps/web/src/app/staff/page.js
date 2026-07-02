@@ -18,11 +18,20 @@ const ROLE_OPTIONS = [
   { value: 'volunteer', label: 'Volunteer' },
 ];
 
+const PERMISSION_OPTIONS = [
+  { value: "attendance", label: "Attendance" },
+  { value: "registration", label: "Registration" },
+  { value: "scanner", label: "Scanner" },
+  { value: "food", label: "Food" },
+  { value: "accommodation", label: "Accommodation" },
+];
+
 export default function StaffPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth(); // Fix #15 & #16 — auth + renamed to avoid clash
 
   const [staff, setStaff] = useState([]);
+  const [events, setEvents] = useState([]);
   const [staffLoading, setStaffLoading] = useState(true); // Fix #16 — renamed from 'loading'
 
   const [search, setSearch] = useState('');
@@ -48,6 +57,8 @@ export default function StaffPage() {
   // Global error state
   const [loadError, setLoadError] = useState('');   // Fix #5 & #18
   const [actionError, setActionError] = useState(''); // Fix #1 & #18
+  const [selectedEvents, setSelectedEvents] = useState([]);
+  const [selectedPermissions, setSelectedPermissions] = useState([]);
 
   // Fix #15 — auth redirect
   useEffect(() => {
@@ -56,11 +67,12 @@ export default function StaffPage() {
     }
   }, [user, authLoading, router]);
 
-  useEffect(() => {
-    if (!authLoading && user) {
-      loadStaff();
-    }
-  }, [authLoading, user]);
+useEffect(() => {
+  if (!authLoading && user) {
+    loadStaff();
+    loadEvents();
+  }
+}, [authLoading, user]);
 
   const loadStaff = async () => {
     try {
@@ -75,6 +87,18 @@ export default function StaffPage() {
       setStaffLoading(false);
     }
   };
+
+  const loadEvents = async () => {
+  try {
+    const { data } = await api.get("/api/events/");
+
+  
+
+    setEvents(data.events || data || []);
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   const createStaff = async () => {
     setCreateError('');
@@ -94,19 +118,35 @@ export default function StaffPage() {
       return;
     }
 
+    if (selectedPermissions.length === 0) {
+  setCreateError("Select at least one permission.");
+  return;
+}
+
+if (selectedEvents.length === 0) {
+  setCreateError("Select at least one event.");
+  return;
+}
+
     try {
       setCreateLoading(true); // Fix #6
-      await api.post('/api/staff', { // untouched
-        full_name: trimmedName,
-        email: trimmedEmail,
-        password,
-        role,
-      });
+      await api.post("/api/staff", {
+  full_name: trimmedName,
+  email: trimmedEmail,
+  password,
+  role,
+
+  permissions: selectedPermissions,
+
+  event_ids: selectedEvents,
+});
 
       setFullName('');
       setEmail('');
       setPassword('');
       setRole('registration_team');
+      setSelectedPermissions([]);
+      setSelectedEvents([]);
       setCreateSuccess('Staff member created successfully.'); // Fix #1 — no alert()
       await loadStaff();
     } catch (err) {
@@ -322,6 +362,116 @@ export default function StaffPage() {
             </div>
 
           </div>
+
+          <div className="mt-6 grid md:grid-cols-2 gap-8">
+
+  {/* Permissions */}
+
+  <div>
+
+    <label className="block font-medium mb-3">
+      Permissions
+    </label>
+
+    <div className="space-y-2">
+
+      {PERMISSION_OPTIONS.map((permission) => (
+
+        <label
+          key={permission.value}
+          className="flex items-center gap-2"
+        >
+
+          <input
+            type="checkbox"
+            checked={selectedPermissions.includes(permission.value)}
+            onChange={(e) => {
+
+              if (e.target.checked) {
+
+                setSelectedPermissions([
+                  ...selectedPermissions,
+                  permission.value,
+                ]);
+
+              } else {
+
+                setSelectedPermissions(
+                  selectedPermissions.filter(
+                    (p) => p !== permission.value
+                  )
+                );
+
+              }
+
+            }}
+          />
+
+          {permission.label}
+
+        </label>
+
+      ))}
+
+    </div>
+
+  </div>
+
+  {/* Assigned Events */}
+
+  <div>
+
+    <label className="block font-medium mb-3">
+      Assigned Events
+    </label>
+
+    <div className="space-y-2 max-h-56 overflow-y-auto border rounded p-3">
+
+      {events.map((event) => (
+
+        <label
+          key={event.id}
+          className="flex items-center gap-2"
+        >
+
+          <input
+            type="checkbox"
+            checked={selectedEvents.includes(event.id)}
+            onChange={(e) => {
+
+              if (e.target.checked) {
+
+                setSelectedEvents([
+                  ...selectedEvents,
+                  event.id,
+                ]);
+
+              } else {
+
+                setSelectedEvents(
+                  selectedEvents.filter(
+                    (id) => id !== event.id
+                  )
+                );
+
+              }
+
+            }}
+          />
+
+          {event.title}
+
+        </label>
+
+      ))}
+
+    </div>
+
+  </div>
+
+</div>
+
+
 
           {/* Fix #6 — loading state on button */}
           <button

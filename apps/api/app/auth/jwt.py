@@ -9,7 +9,7 @@ import os
 
 SECRET_KEY = os.getenv("JWT_SECRET", "change-me-in-production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 15
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -141,3 +141,132 @@ require_any_staff = require_roles(
     "volunteer",
     "super_admin"
 )
+
+from app.database.connection import TenantDB
+
+def require_permission(permission: str):
+
+    async def _check(
+        request: Request,
+        current_user: dict = Depends(get_current_user)
+    ):
+
+        # Organizer & Super Admin always have access
+        if current_user["role"] in ["organizer", "super_admin"]:
+            return current_user
+
+        event_id = request.path_params.get("event_id") or request.query_params.get("event_id")
+
+        if not event_id:
+            raise HTTPException(
+                status_code=400,
+                detail="event_id is required"
+            )
+
+        async with TenantDB(current_user["tenant_id"]) as conn:
+
+            permission_exists = await conn.fetchrow(
+                """
+                SELECT 1
+                FROM staff_permissions
+                WHERE user_id = $1
+                AND tenant_id = $2
+                AND event_id = $3
+                AND permission = $4
+                """,
+                current_user["user_id"],
+                current_user["tenant_id"],
+                event_id,
+                permission
+            )
+
+        if not permission_exists:
+            raise HTTPException(
+                status_code=403,
+                detail="Permission denied"
+            )
+
+        return current_user
+
+    return _check
+
+def require_any_permission(permissions: list[str]):
+
+    async def _check(
+        request: Request,
+        current_user: dict = Depends(get_current_user)
+    ):
+
+        # Organizer & Super Admin always have access
+        if current_user["role"] in ["organizer", "super_admin"]:
+            return current_user
+
+        event_id = (
+            request.path_params.get("event_id")
+            or request.query_params.get("event_id")
+        )
+
+        if not event_id:
+            raise HTTPException(
+                status_code=400,
+                detail="event_id is required"
+            )
+
+        async with TenantDB(current_user["tenant_id"]) as conn:
+
+            permission_exists = await conn.fetchrow(
+                """
+                SELECT 1
+                FROM staff_permissions
+                WHERE user_id = $1
+                AND tenant_id = $2
+                AND event_id = $3
+                AND permission = ANY($4::text[])
+                """,
+                current_user["user_id"],
+                current_user["tenant_id"],
+                event_id,
+                permissions
+            )
+
+        if not permission_exists:
+            raise HTTPException(
+                status_code=403,
+                detail="Permission denied"
+            )
+
+        return current_user
+
+    return _check
+
+async def verify_permission(
+        current_user: dict,
+        event_id: str,
+        permission: str
+    ):
+        # Organizer & Super Admin bypass
+        if current_user["role"] in ["organizer", "super_admin"]:
+            return
+
+        async with TenantDB(current_user["tenant_id"]) as conn:
+
+            permission_exists = await conn.fetchrow(
+                """
+                SELECT 1
+                FROM staff_permissions
+                WHERE user_id = $1
+                AND tenant_id = $2
+                AND event_id = $3
+                AND permission = $4
+                """,
+                current_user["user_id"],
+                current_user["tenant_id"],
+                event_id,
+                permission
+            )
+
+        if not permission_exists:
+            raise HTTPException(
+                status_code=403,
+                detail="Permission denied"
+            )

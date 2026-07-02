@@ -23,11 +23,11 @@ function AttendanceScannerContent() {
   try {
     const res = await api.get('/api/events/');
 
-    console.log("EVENT API:", res.data);
+    
 
     const list = res.data.events || [];
 
-    console.log("EVENT LIST:", list);
+    
 
     setEvents(list);
 
@@ -35,8 +35,8 @@ function AttendanceScannerContent() {
   "attendanceSelectedEvent"
 );
 
-console.log("Saved Event:", savedEvent);
-console.log("Events:", list);
+
+
 
 if (
   savedEvent &&
@@ -62,10 +62,6 @@ if (event) {
   const handleScan = async (qrData) => {
     if (processing) return;
 
-    console.log("QR SCANNED");
-    console.log("selectedEvent =", selectedEvent);
-    console.log("qrData =", qrData);
-
     if (!selectedEvent) {
       alert('Please select an event first.');
       return;
@@ -80,8 +76,7 @@ if (event) {
         scan_type: scanMode,
       });
 
-      console.log("SCAN RESPONSE");
-      console.log(response.data);
+      
 
       if (!response.data.success) {
         setScanResult({
@@ -101,12 +96,7 @@ if (event) {
       }
     } catch (error) {
 
-  console.log(error);
-
-  console.log(error.response);
-
-  console.log(error.response?.data);
-
+ 
   setScanResult({
     error: true,
     message:

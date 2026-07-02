@@ -20,6 +20,10 @@ class CreateStaffRequest(BaseModel):
     password: str
     role: str
 
+    permissions: list[str] = []
+
+    event_ids: list[str] = []
+
 
 class ResetPasswordRequest(BaseModel):
     password: str
@@ -83,52 +87,79 @@ async def create_staff(
         )
 
     async with TenantDB(current_user["tenant_id"]) as conn:
+        async with conn.transaction():
 
-        existing = await conn.fetchrow(
-            """
-            SELECT id
-            FROM users
-            WHERE email = $1
-            """,
-            body.email
-        )
-
-        if existing:
-            raise HTTPException(
-                status_code=400,
-                detail="Email already exists"
+            existing = await conn.fetchrow(
+                """
+                SELECT id
+                FROM users
+                WHERE email = $1
+                """,
+                body.email
             )
 
-        user_id = str(uuid.uuid4())
+            if existing:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Email already exists"
+                )
 
-        await conn.execute(
-            """
-            INSERT INTO users (
-                id,
-                tenant_id,
-                email,
-                password_hash,
-                full_name,
-                role,
-                is_active
+            user_id = str(uuid.uuid4())
+
+
+
+            await conn.execute(
+                """
+                INSERT INTO users (
+                    id,
+                    tenant_id,
+                    email,
+                    password_hash,
+                    full_name,
+                    role,
+                    is_active
+                )
+                VALUES (
+                    $1,$2,$3,$4,$5,$6,true
+                )
+                """,
+                user_id,
+                current_user["tenant_id"],
+                body.email,
+                hash_password(body.password),
+                body.full_name,
+                body.role
             )
-            VALUES (
-                $1,$2,$3,$4,$5,$6,true
-            )
-            """,
-            user_id,
-            current_user["tenant_id"],
-            body.email,
-            hash_password(body.password),
-            body.full_name,
-            body.role
-        )
 
-    return {
-        "success": True,
-        "message": "Staff created successfully"
-    }
+            # ----------------------------------------
+            # Save Event-wise Permissions
+            # ----------------------------------------
 
+            for event_id in body.event_ids:
+
+                for permission in body.permissions:
+
+                    await conn.execute(
+                        """
+                        INSERT INTO staff_permissions (
+                            user_id,
+                            tenant_id,
+                            event_id,
+                            permission
+                        )
+                        VALUES ($1,$2,$3,$4)
+                        """,
+                        user_id,
+                        current_user["tenant_id"],
+                        event_id,
+                        permission
+                    )
+
+            return {
+                "success": True,
+                "message": "Staff created successfully"
+            }
+    
 
 # ==========================================================
 # Disable Staff
